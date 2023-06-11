@@ -1,0 +1,50 @@
+---
+#PrepareUnitTests:
+#  source:
+#    class: triggers.common.CommonSetup.CommonSetup
+#  trigger_uids:
+#    - connect
+#
+#---
+#extends: inventory.yml
+#
+#parameters:
+#  vault_root_token: ${vault_root_token}
+#  vault_token: ${vault_developer_token}
+#  netbox_token: ${netbox_developer_token}
+#  dns_domain: ${dns_domain_name}
+
+test_code:
+  source:
+    class: test_code.TestObjectParameters
+  devices:
+    - uut
+
+test_requests:
+  source:
+    class: test_requests.TestBasicRequests
+  devices: ["test_host"]
+  url_path: test-url
+  test_payload:
+    dict_key:
+      - nested_key: nested_value
+#  test_class:
+#    - HttpSessio
+
+
+#  devices: "%%{inventory.proxy}"
+#
+#test_netbox:
+#  source:
+#    class: triggers.TestNetbox.TestNetbox
+#  devices: "%%{inventory.netbox}"
+#
+#test_vault:
+#  source:
+#    class: triggers.TestVault.TestVault
+#  devices: "%%{inventory.vault}"
+#
+#test_device:
+#  source:
+#    class: triggers.TestNetworkDevice.TestNetworkDevice
+#  devices: "%%{inventory.xe}"

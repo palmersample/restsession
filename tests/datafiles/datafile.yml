@@ -1,0 +1,32 @@
+---
+extends: object_test_attributes.yml
+
+normal_class: HttpSessionClass
+singleton_class: HttpSessionSingletonClass
+
+parameters:
+  url_path: test-url
+
+  test_payload:
+    dict_key:
+      - nested_key: nested_value
+
+  request_retry_count: 3
+  request_redirect_count: 3
+
+  basic_auth_username: nouser
+  basic_auth_password: nopassword
+
+  basic_auth_username_alt: nobodyhere
+  basic_auth_password_alt: hooraytesting
+
+  custom_auth_token_one: super_big_token_thing
+  custom_auth_token_two: slightly_bigger_auth_token
+
+
+testcases:
+  LocalSetup:
+    parameters:
+      test_classes:
+        - HttpSessionClass
+        - HttpSessionSingletonClass

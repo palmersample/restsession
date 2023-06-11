@@ -1,0 +1,8 @@
+---
+devices:
+  test_host:
+    os: linux
+    alias: uut
+    connections:
+      linux:
+        ip: 127.0.0.1
