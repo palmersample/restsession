@@ -22,6 +22,8 @@ SERVER_ERROR_CODES = [503]
 
 SESSION_DEFAULTS = MappingProxyType(
     {
+        "headers": {},
+        "auth_headers": {},
         "timeout": 5,
         "retries": 3,
         "max_redirect": 16,

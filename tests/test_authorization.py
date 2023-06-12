@@ -335,8 +335,11 @@ class TestRequestAuthorization(BaseHttpServer):
 
         # TODO - Add test_instance.custom_auth_header attribute/setter. For each custom auth header,
         #   remove the key using the new remove_custom_auth_header hook
-        test_instance.http.headers.update({"X-Auth-Token": custom_auth_token_one, "Authorization": custom_auth_token_one})
-        # test_instance.http.headers
+        # test_instance.http.headers.update({"X-Auth-Token": custom_auth_token_one, "Authorization": custom_auth_token_one})
+        test_instance.auth_headers = {
+            "X-Auth-Token": custom_auth_token_one,
+            "Authorization": custom_auth_token_one
+        }
 
         try:
             test_instance.get(url_path)

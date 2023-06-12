@@ -1,0 +1,6 @@
+restsession.egg-info/
+*.pyc
+*.swp
+*.egg
+dist
+.idea

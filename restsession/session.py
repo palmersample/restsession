@@ -105,13 +105,6 @@ def default_response_hook(response, **kwargs):  # pylint: disable=unused-argumen
     except RequestException as err:
         logger.error("An unspecified request exception was encountered: %s", err)
         raise RequestException(err) from err
-    # else:
-    #     if response.is_redirect:
-    #         logger.error("Response dir: %s", dir(response))
-    #         logger.error("Request object: %s", dir(response.request))
-    #         if "Authorization" in response.request.headers:
-    #             logger.error("Deleting the authorization")
-    #             del(response.request.headers["Authorization"])
 
 
 # def remove_custom_auth_header_on_redirect(response, **kwargs):  # pylint: disable=unused-argument
@@ -121,12 +114,15 @@ def remove_custom_auth_header_on_redirect(header):  # pylint: disable=unused-arg
 
     def response_hook(response, **kwargs):
         logger.info("Removing custom auth header on redirect")
-        logger.error("kwargs:\n%s", kwargs)
+        logger.error("Request info:\n%s", response.request)
+        logger.error("Initial headers:\n%s", response.request.headers)
 
         if response.is_redirect:
             if header in response.request.headers:
                 logger.error("Deleting the authorization")
                 del(response.request.headers[header])
+
+        logger.error("Headers after removal:\n%s", response.request.headers)
 
     return response_hook
 
@@ -139,6 +135,8 @@ class HttpSessionClass:
     """
     # pylint: disable=too-many-arguments, unused-argument
     def __init__(self,
+                 headers: dict = SESSION_DEFAULTS["headers"],
+                 auth_headers: dict = SESSION_DEFAULTS["auth_headers"],
                  timeout: int = SESSION_DEFAULTS["timeout"],
                  retries: int = SESSION_DEFAULTS["retries"],
                  max_redirect: int = SESSION_DEFAULTS["max_redirect"],
@@ -229,7 +227,9 @@ class HttpSessionClass:
             # raise_on_status=False
             raise_on_status=True,
             # remove_headers_on_redirect=["Authorization", "X-Auth-Token"]
-            remove_headers_on_redirect=['X-Auth-Token'],
+            # Because the redirect handler is not being used, this will not do
+            # anything.
+            # remove_headers_on_redirect=['X-Auth-Token'],
             # With raise_on_redirect, assert status hook is NEVER called.
             raise_on_redirect=True
             # raise_on_redirect=False
@@ -266,9 +266,9 @@ class HttpSessionClass:
             self.replace_response_hooks(default_response_hook)
         # self.response_hooks = default_response_hook
 
-        self.add_response_hooks(hooks=[remove_custom_auth_header_on_redirect(header="X-Auth-Token")])
-
-        # self.add_response_hooks(hooks=[remove_custom_auth_header_on_redirect])
+        if auth_headers := self._session_params.auth_headers:
+            for header_name, _ in auth_headers.items():
+                self.add_response_hooks(hooks=[remove_custom_auth_header_on_redirect(header=header_name)])
 
         self.max_reauth = 3
 
@@ -613,6 +613,28 @@ class HttpSessionClass:
             self._session_params.password = validated_field.auth[1]
         self._session_params.auth = validated_field.auth
         self.http.auth = self._session_params.auth
+
+    @property
+    def headers(self):
+        return self._session_params.headers
+
+    @headers.setter
+    def headers(self, headers: Optional[dict[str, str]] = {}):
+        self._session_params.headers.update(headers)
+        self.http.headers.update(self._session_params.headers)
+
+    @property
+    def auth_headers(self):
+        return self._session_params.auth_headers
+
+    @auth_headers.setter
+    def auth_headers(self, headers: Optional[dict[str, str]] = {}):
+        self._session_params.auth_headers.update(headers)
+        self.http.headers.update(self._session_params.auth_headers)
+
+        if auth_headers := headers:
+            for header_name, _ in auth_headers.items():
+                self.add_response_hooks(hooks=[remove_custom_auth_header_on_redirect(header=header_name)])
 
     def reauth(self):
         if hasattr(self.auth, "reauth"):

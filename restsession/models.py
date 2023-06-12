@@ -416,6 +416,15 @@ class ResponseHookValidator(BaseModel):
     response_hooks: Optional[list] = []
 
 
+class SessionHeaderValidator(BaseModel):
+    """
+    Model for HTTP header validation. Make sure the input is a dict and, if
+    not null, that the k/v pairs are strings.
+    """
+    headers: Optional[dict[str, str]] = {}
+    auth_headers: Optional[dict[str, str]] = {}
+
+
 # pylint: disable-next=too-many-ancestors, too-many-instance-attributes
 class HttpSessionArguments(ResponseHookValidator,
                            MaxReauthValidator,
@@ -430,7 +439,8 @@ class HttpSessionArguments(ResponseHookValidator,
                            BackoffFactorValidator,
                            MaxRedirectValidator,
                            RetriesValidator,
-                           TimeoutValidator
+                           TimeoutValidator,
+                           SessionHeaderValidator
                            ):
     """
     Validate all session arguments by inheriting each individual BaseModel
