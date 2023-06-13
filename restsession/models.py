@@ -7,7 +7,8 @@ a main "entry" class to be used for full model validation.
 # pylint: disable=no-name-in-module, no-self-argument, too-few-public-methods
 import logging
 from typing import (Optional,
-                    Union)
+                    Union,
+                    Callable)
 from pydantic import (BaseModel,
                       AnyHttpUrl,
                       StrictBool,
@@ -16,6 +17,7 @@ from pydantic import (BaseModel,
                       StrictStr,
                       ValidationError,
                       conint,
+                      conlist,
                       parse_obj_as,
                       validator)
 from requests.auth import AuthBase
@@ -152,7 +154,6 @@ class RetryStatusCodeListValidator(BaseModel):
     #     ]
     # ] = []
 
-    # pylint: disable=loop-invariant-statement
     @validator("retry_status_code_list", pre=True)
     def validate_retry_status_code_list(cls, value):
         """
@@ -355,6 +356,9 @@ class AuthValidator(BaseModel):
     auth: Optional[Union[tuple[str, str], AuthBase]] = None
 
     class Config:
+        """
+        pydantic configuration options for AuthValidator.
+        """
         arbitrary_types_allowed = True
 
     @validator("auth", pre=True)
@@ -409,11 +413,25 @@ class MaxReauthValidator(BaseModel):
         return result
 
 
+class RedirectHeaderHookValidator(BaseModel):
+    """
+    Model for the request exception hook
+    """
+    redirect_header_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = []
+
+
+class RequestExceptionHookValidator(BaseModel):
+    """
+    Model for the request exception hook
+    """
+    request_exception_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = []
+
+
 class ResponseHookValidator(BaseModel):
     """
     Model for HTTP Basic Authentication - Password
     """
-    response_hooks: Optional[list] = []
+    response_hooks: Optional[list[Callable]] = []
 
 
 class SessionHeaderValidator(BaseModel):
@@ -440,7 +458,9 @@ class HttpSessionArguments(ResponseHookValidator,
                            MaxRedirectValidator,
                            RetriesValidator,
                            TimeoutValidator,
-                           SessionHeaderValidator
+                           SessionHeaderValidator,
+                           RequestExceptionHookValidator,
+                           RedirectHeaderHookValidator
                            ):
     """
     Validate all session arguments by inheriting each individual BaseModel

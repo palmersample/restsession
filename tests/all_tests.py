@@ -31,21 +31,23 @@ class LocalSetup(aetest.Testcase):
         all_classes = [get_class("restsession", class_name) for class_name in test_classes]
 
         # # Mark each test for looping
-        # aetest.loop.mark(basic_requests, test_class=all_classes)
-        # aetest.loop.mark(request_retries, test_class=all_classes)
-        # aetest.loop.mark(request_redirect, test_class=all_classes)
+        aetest.loop.mark(basic_requests, test_class=all_classes)
+        aetest.loop.mark(request_retries, test_class=all_classes)
+        aetest.loop.mark(request_redirect, test_class=all_classes)
         aetest.loop.mark(request_auth, test_class=all_classes)
 
 
+class basic_requests(TestBasicRequests):
+    ...
 
-# class basic_requests(TestBasicRequests):
-#     ...
-#
-# class request_retries(TestRequestRetries):
-#     ...
-#
-# class request_redirect(TestRequestRedirects):
-#     ...
+
+class request_retries(TestRequestRetries):
+    ...
+
+
+class request_redirect(TestRequestRedirects):
+    ...
+
 
 class request_auth(TestRequestAuthorization):
     ...

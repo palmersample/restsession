@@ -7,6 +7,9 @@ instantiation and ensure a valid session is available, even if an incorrect
 parameter is supplied.
 """
 import logging
+from typing import Any, Optional, Union
+from types import MappingProxyType
+from urllib.parse import urlparse
 from requests.exceptions import (HTTPError as RequestHTTPError,
                                  ConnectionError as RequestConnectionError,
                                  InvalidJSONError as RequestInvalidJSONError,
@@ -16,12 +19,10 @@ from requests.exceptions import (HTTPError as RequestHTTPError,
                                  TooManyRedirects as RequestTooManyRedirects,
                                  RequestException)
 from requests.adapters import HTTPAdapter
-from requests import Session
+from requests.auth import AuthBase
+from requests_toolbelt import sessions
 from urllib3 import disable_warnings
 from urllib3.util.retry import Retry
-from requests_toolbelt import sessions
-from requests.auth import AuthBase
-from typing import Any, Optional, Union
 from .defaults import SESSION_DEFAULTS
 from .models import (
     HttpSessionArguments,
@@ -63,7 +64,7 @@ class TimeoutHTTPAdapter(HTTPAdapter):
         return super().send(request, **kwargs)
 
 
-def default_response_hook(response, **kwargs):  # pylint: disable=unused-argument
+def default_request_exception_hook(response, **kwargs):  # pylint: disable=unused-argument
     """
     This function is bound to the HTTP Session object and raises the request
     Response for status, catches exceptions, and re-raises the same exception
@@ -76,7 +77,7 @@ def default_response_hook(response, **kwargs):  # pylint: disable=unused-argumen
     :param response: Requests response object
     :return: None
     """
-    logger.info("Entering default_response_hook after request...")
+
     try:
         response.raise_for_status()
     except RequestTooManyRedirects as err:
@@ -107,24 +108,41 @@ def default_response_hook(response, **kwargs):  # pylint: disable=unused-argumen
         raise RequestException(err) from err
 
 
-# def remove_custom_auth_header_on_redirect(response, **kwargs):  # pylint: disable=unused-argument
-# def remove_custom_auth_header_on_redirect(header, *args, **kwargs):  # pylint: disable=unused-argument
-def remove_custom_auth_header_on_redirect(header):  # pylint: disable=unused-argument
-    logger.error(f"Creating hook to remove header '%s' on redirect...", header)
+def remove_custom_auth_header_on_redirect(headers: Optional[list[str]] = ()):
+    """
+    Given a list of header keys, if any are present after a cross-domain
+    redirect they will be removed. The "Authorization" header is already
+    handled by the requests library, so this permits custom auth headers
+    to also be removed for security reasons.
 
-    def response_hook(response, **kwargs):
-        logger.info("Removing custom auth header on redirect")
-        logger.error("Request info:\n%s", response.request)
-        logger.error("Initial headers:\n%s", response.request.headers)
+    The returned function (redirect_header_hook) will be the first response
+    hook attached to the Session object.
 
-        if response.is_redirect:
-            if header in response.request.headers:
-                logger.error("Deleting the authorization")
-                del(response.request.headers[header])
+    :param headers: List of header names to remove on redirect
+    :return: redirect_header_hook function reference to be used as a hook
+    """
+    logger.error("Creating hook to remove header '%s' on redirect...", headers)
 
-        logger.error("Headers after removal:\n%s", response.request.headers)
+    def redirect_header_hook(response, **kwargs):  # pylint: disable=unused-argument
+        """
+        Hook used when a redirect response is received. If redirected to a
+        different host, remove any custom auth headers as supplied in the
+        wrapping function.
 
-    return response_hook
+        :param response: requests Response object
+        :param kwargs: Any arguments passed to the response hook by requests
+        :return: None
+        """
+        if response.is_redirect and headers and \
+                (urlparse(response.request.url).netloc !=
+                 urlparse(response.headers["Location"]).netloc):
+
+            # Only strip the headers when being redirected to a different host
+            response.request.headers = {
+                k: v for k, v in response.request.headers.items() if k not in headers
+            }
+
+    return redirect_header_hook
 
 
 class HttpSessionClass:
@@ -133,7 +151,11 @@ class HttpSessionClass:
     object, generate all needed settings for timeout/retries and configure
     HTTP Basic authentication if a username/password is provided.
     """
-    # pylint: disable=too-many-arguments, unused-argument
+    # pylint: disable=too-many-arguments
+    # pylint: disable=unused-argument
+    # pylint: disable=too-many-public-methods
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-locals
     def __init__(self,
                  headers: dict = SESSION_DEFAULTS["headers"],
                  auth_headers: dict = SESSION_DEFAULTS["auth_headers"],
@@ -176,81 +198,34 @@ class HttpSessionClass:
             self._session_params = HttpSessionArguments(**locals())
 
         self.http = sessions.BaseUrlSession(base_url=self.base_url)
-        # TODO Consider - let Session handle the redirect so it simplifies the retry_status_code_list
-        #  Otherwise will need to add every 3xx code used for redirects. Only use the Retry class for
-        #  status codes that will be retried on API failure, for example. ALSO - ensure strip headers
-        #  for authorization is enabled - IF POSSIBLE - on requests.Session() - OTHERWISE may need to
-        #  use the Retry and deal with the retry_status_code_list... maybe change defaults to include
-        #  more 3xx series responses.
-        #############
-        # TODO Update 2023-Mar-21 @ 1825: Using the request library when possible BECAUSE this allows
-        #  a response object to be accessible via the raised exception (e.g. err.response.history)
-        #  When using the Retry object, response objects are gobbled up and tied to the Retry object,
-        #  and the history is cleared each time a new retry is made. This may not be critical, but
-        #  it provides additional opportunity for implementations to test for a response object's
-        #  properties e.g. returned headers - even if the max redirect is reached.
-        # self.http.max_redirects = self.max_redirect
+        self.http.max_redirects = self.max_redirect
 
         self.http.verify = self.tls_verify
         if not self.tls_verify:
             disable_warnings()
 
-        # Can't get a response object is a redirect fails - so unable to get the count
-        # from the History. Until a fix is identified, set the redirect on the
-        # Session() object and disable here. This will cause retries to be performed
-        # at the requests level and not the urllib3.util.Retry - so be it for now.
-        # There should be no appreciable performance penalty bypassing this subclass.
-        #
-        # OBSERVATION: When redirects are enabled as part of the Retry(), you must add
-        # the redirect status code to the retry or the redirect count is ignored. It
-        # will just hit the max.
-        # BUT if you add the redirect status code to the retry status code list, the
-        # redirect is never actually followed... so the request is made to the same
-        # host repeatedly, which is essentially a blackhole of the request. IF you leave
-        # the redirect count set on the Retry object AND you do NOT set the Session()
-        # object's max_redirect count, the Retry value is ignored and the max of 30
-        # redirects is used... so really, there's no reason to set anything to do with
-        # the redirect on the Retry() object. Disabled - useless!
+        # requests handles the redirects, so only apply parameters related to
+        # retries with this handler.
         default_retry_strategy = Retry(
             total=self.retries,
-            # Setting total to None results in infinite retries for some statuses... WTF
-            # total=None,
-            # status=self.retries,
-            # connect=self.retries,
             other=0,
-            # redirect=self.max_redirect,
             redirect=False,
             backoff_factor=self.backoff_factor,
             status_forcelist=self.retry_status_code_list,
             allowed_methods=self.retry_method_list,
             respect_retry_after_header=self.respect_retry_headers,
-            # raise_on_status=False
-            raise_on_status=True,
-            # remove_headers_on_redirect=["Authorization", "X-Auth-Token"]
-            # Because the redirect handler is not being used, this will not do
-            # anything.
-            # remove_headers_on_redirect=['X-Auth-Token'],
-            # With raise_on_redirect, assert status hook is NEVER called.
-            raise_on_redirect=True
-            # raise_on_redirect=False
-            # raise_on_redirect=False
+            raise_on_status=True
         )
 
-        self.timeout = timeout
+        self.http.timeout = self.timeout
 
         # Mount http/https to the request session and attach the timeout
         # adapter with defined retry strategy
-        # self.http.mount("https://", HTTPAdapter(max_retries=default_retry_strategy))
-        #
-        # self.http.mount("http://", HTTPAdapter(max_retries=default_retry_strategy))
-
         self.http.mount("https://", TimeoutHTTPAdapter(timeout=self.timeout,
-                                                       max_retries=default_retry_strategy)
-                        )
+                                                       max_retries=default_retry_strategy))
 
         self.http.mount("http://", TimeoutHTTPAdapter(timeout=self.timeout,
-                                                      max_retries=default_retry_strategy)
-                        )
+                                                      max_retries=default_retry_strategy))
 
         # Is username/password provided, use basic auth. Otherwise if an auth
         # parameter was passed, initialize the session auth object
@@ -260,15 +235,14 @@ class HttpSessionClass:
             self.http.auth = self.auth
         self.reauth_count = 0
 
-        # Assign the response hook to the session
-        # self.http.hooks['response'] = [default_response_hook]
-        if len(self.response_hooks) == 0:
-            self.replace_response_hooks(default_response_hook)
-        # self.response_hooks = default_response_hook
-
-        if auth_headers := self._session_params.auth_headers:
-            for header_name, _ in auth_headers.items():
-                self.add_response_hooks(hooks=[remove_custom_auth_header_on_redirect(header=header_name)])
+        # Assign the response hooks to the session. This should always be:
+        #  0: redirect_header_hook (remove auth headers on redirect)
+        #  1-x: custom_hooks
+        #  Last: request_exception_hook (raise for status and catch exceptions)
+        self.redirect_header_hook = remove_custom_auth_header_on_redirect(
+            headers=auth_headers.keys()
+        )
+        self.request_exception_hook = default_request_exception_hook
 
         self.max_reauth = 3
 
@@ -366,10 +340,10 @@ class HttpSessionClass:
         """
         validated_field = MaxRedirectValidator(max_redirect=max_redirect)
         self._session_params.max_redirect = validated_field.max_redirect
-        self.http.max_redirects = self._session_params.max_redirect
-        # for mounted_adapter in self.http.adapters:
-        #     self.http.get_adapter(mounted_adapter)\
-        #         .max_retries.redirect = self._session_params.max_redirect
+        # self.http.max_redirects = self._session_params.max_redirect
+        for mounted_adapter in self.http.adapters:
+            self.http.get_adapter(mounted_adapter)\
+                .max_retries.redirect = self._session_params.max_redirect
 
     @property
     def backoff_factor(self):
@@ -607,6 +581,8 @@ class HttpSessionClass:
         :param auth_method: Authorization method for the HTTP session.
         :return: None
         """
+        # pylint: disable=unsubscriptable-object
+
         validated_field = AuthValidator(auth=auth_method)
         if isinstance(validated_field.auth, tuple):
             self._session_params.username = validated_field.auth[0]
@@ -616,64 +592,175 @@ class HttpSessionClass:
 
     @property
     def headers(self):
+        """
+        Currently configured headers to include in the request.
+
+        :return: headers attribute from session object
+        """
         return self._session_params.headers
 
     @headers.setter
-    def headers(self, headers: Optional[dict[str, str]] = {}):
+    def headers(self, headers: Optional[dict[str, str]] = MappingProxyType({})):
+        """
+        Update the HTTP headers for the current session. This should NOT be
+        used for authentication headers, as these will not be removed on a
+        cross-domain redirect. Use the auth_headers attribute for those.
+
+        :param headers: Dictionary of additional headers for the session.
+        :return: None
+        """
         self._session_params.headers.update(headers)
         self.http.headers.update(self._session_params.headers)
 
     @property
     def auth_headers(self):
+        """
+        Currently configured custom authentication/authorization headers.
+
+        :return: auth headers from the session object
+        """
         return self._session_params.auth_headers
 
     @auth_headers.setter
-    def auth_headers(self, headers: Optional[dict[str, str]] = {}):
+    def auth_headers(self, headers: Optional[dict[str, str]] = MappingProxyType({})):
+        """
+        Add custom auth headers (X-Auth-Token, etc) for the request session
+        object. The differentiator with auth_headers is that each custom
+        auth header provided here will be added to the redirect hook which
+        will remove them on a cross-domain redirect.
+
+        :param headers: Dictionary of custom auth headers for the session
+        :return: None
+        """
         self._session_params.auth_headers.update(headers)
         self.http.headers.update(self._session_params.auth_headers)
 
-        if auth_headers := headers:
-            for header_name, _ in auth_headers.items():
-                self.add_response_hooks(hooks=[remove_custom_auth_header_on_redirect(header=header_name)])
+        self.redirect_header_hook = remove_custom_auth_header_on_redirect(headers=headers.keys())
 
     def reauth(self):
+        """
+        Attempt the last request if a 401 is received. If called, check for
+        the reauth attempt number and, if less than the max reauth,
+        perform a re-auth for the session and retry the request.
+
+        :return: None
+        :raises: RequestHTTPError if max auth count reached
+        """
         if hasattr(self.auth, "reauth"):
             if self.reauth_count >= self.max_reauth:
-                raise RequestHTTPError("Maximum reauthentication count reached (" + self.reauth_count + ")")
+                raise RequestHTTPError(
+                    f"Maximum reauthentication count reached ({self.reauth_count})"
+                )
             self.reauth_count += 1
             self.auth.reauth()
 
     @property
+    def redirect_header_hook(self):
+        """
+        Currently configured response hook for redirect handling
+
+        :return: session response hook for redirects
+        """
+        return self._session_params.redirect_header_hook
+
+    @redirect_header_hook.setter
+    def redirect_header_hook(self, hook):
+        """
+        Set (or replace) the response hook to handle redirects. By default,
+        the hook is configured to remove any custom auth headers before
+        re-sending a request when a redirect is received.
+
+        This hook will be the FIRST hook executed after a response.
+
+        :param headers: Function reference to become the redirect handler
+        :return: None
+        """
+        if not isinstance(hook, list):
+            hook = [hook]
+        logger.error("Response hooks: %s", self.http.hooks["response"])
+        logger.error("Setting hook: %s", hook)
+        self._session_params.redirect_header_hook = hook
+        self.http.hooks["response"] = self.redirect_header_hook + \
+                                      self.response_hooks + \
+                                      self.request_exception_hook
+        logger.error("redirect hook update: %s", self.http.hooks["response"])
+
+    @property
+    def request_exception_hook(self):
+        """
+        Currently configured response hook for exception handling
+
+        :return: session response hook for exceptions
+        """
+        return self._session_params.request_exception_hook
+
+    @request_exception_hook.setter
+    def request_exception_hook(self, hook):
+        """
+        Set (or replace) the exception hook to handle HTTP errors.
+
+        By default, the hook will re-raise various exceptions generated
+        by the requests library or urllib3; however, it may be desirable to
+        replace this hook if custom exceptions should be raised.
+
+        This hook will be the LAST hook raised after a response, after the
+        redirect hook and any custom hooks.
+
+        :param headers: Function reference to become the exception handler hook
+        :return: None
+        """
+        if not isinstance(hook, list):
+            hook = [hook]
+        self._session_params.request_exception_hook = hook
+        logger.error("Current exception hook: %s", self.request_exception_hook)
+        self.http.hooks["response"] = self.redirect_header_hook + \
+                                      self.response_hooks + \
+                                      self.request_exception_hook
+        logger.error("All current hooks: %s (len: %s)",
+                     self.http.hooks["response"],
+                     len(self.http.hooks["response"])
+                     )
+
+    @property
     def response_hooks(self):
+        """
+        Currently configured custom response hooks.
+
+        :return: User-defined custom response hooks
+        """
         return self._session_params.response_hooks
 
-    # @response_hooks.setter
-    # def response_hooks(self, hooks):
-    #     if not isinstance(hooks, list):
-    #         hooks = [hooks]
-    #
-    #     self._session_params.response_hooks = hooks + self._session_params.response_hooks
-    #     self.http.hooks["response"] = self._session_params.response_hooks
+    @response_hooks.setter
+    def response_hooks(self, hooks):
+        """
+        Add response hook(s) to be executed after a response is received.
 
-    def add_response_hooks(self, hooks):
+        Either a list of hooks can be provided, or a single hook. If a single
+        hook is passed, it will be appended to the list of exisiting response
+        hooks.
+
+        These response hooks will be executed AFTER the redirect hook and
+        BEFORE any exception handler hook.
+
+        :param headers: Function(s) to call after a response is received.
+        :return: None
+        """
         if not isinstance(hooks, list):
             hooks = [hooks]
-        callable_hooks = []
-        for hook in hooks:
-            if callable(hook):
-                callable_hooks.append(hook)
-            else:
-                raise RequestException("The provided response hook is not a function, unable to add.")
 
-        # self._session_params.response_hooks = hooks + self.response_hooks
-        self._session_params.response_hooks = hooks + self.response_hooks
-        self.http.hooks["response"] = self.response_hooks
+        self._session_params.response_hooks = self._session_params.response_hooks + hooks
+        self.http.hooks["response"] = self.redirect_header_hook + \
+                                      self.response_hooks + \
+                                      self.request_exception_hook
 
-    def replace_response_hooks(self, hooks):
-        if not isinstance(hooks, list):
-            hooks = [hooks]
-        self._session_params.response_hooks = hooks
-        self.http.hooks["response"] = self.response_hooks
+    def clear_response_hooks(self):
+        """
+        Clear all user-defined response hooks.
+
+        :return: None
+        """
+        self._session_params.response_hooks = []
+        self.http.hooks["response"] = []
 
     def request(self, method, url, **kwargs):
         """
