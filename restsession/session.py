@@ -121,8 +121,6 @@ def remove_custom_auth_header_on_redirect(headers: Optional[list[str]] = ()):
     :param headers: List of header names to remove on redirect
     :return: redirect_header_hook function reference to be used as a hook
     """
-    logger.error("Creating hook to remove header '%s' on redirect...", headers)
-
     def redirect_header_hook(response, **kwargs):  # pylint: disable=unused-argument
         """
         Hook used when a redirect response is received. If redirected to a
@@ -677,13 +675,10 @@ class HttpSessionClass:
         """
         if not isinstance(hook, list):
             hook = [hook]
-        logger.error("Response hooks: %s", self.http.hooks["response"])
-        logger.error("Setting hook: %s", hook)
         self._session_params.redirect_header_hook = hook
         self.http.hooks["response"] = self.redirect_header_hook + \
                                       self.response_hooks + \
                                       self.request_exception_hook
-        logger.error("redirect hook update: %s", self.http.hooks["response"])
 
     @property
     def request_exception_hook(self):
@@ -712,14 +707,9 @@ class HttpSessionClass:
         if not isinstance(hook, list):
             hook = [hook]
         self._session_params.request_exception_hook = hook
-        logger.error("Current exception hook: %s", self.request_exception_hook)
         self.http.hooks["response"] = self.redirect_header_hook + \
                                       self.response_hooks + \
                                       self.request_exception_hook
-        logger.error("All current hooks: %s (len: %s)",
-                     self.http.hooks["response"],
-                     len(self.http.hooks["response"])
-                     )
 
     @property
     def response_hooks(self):
