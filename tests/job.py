@@ -3,12 +3,22 @@ pyATS Library Sample Job File
 '''
 import os
 import logging
-from sys import platform
+import sys
 from pyats.easypy import run
+from pathlib import Path
+
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[1]
+sys.path.append(str(root))
+
+# Import the main package restsession to make classes available for tests
+import restsession  # noqa: E402,F401
 
 logger = logging.getLogger(__name__)
 
-if platform == "darwin":
+logger.error("System path from job.py:\n%s\n", sys.path)
+
+if sys.platform == "darwin":
     os.environ["NO_PROXY"] = os.environ.get("NO_PROXY", "novalue")
 
 
