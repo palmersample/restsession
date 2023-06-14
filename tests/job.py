@@ -16,8 +16,6 @@ import restsession  # noqa: E402,F401
 
 logger = logging.getLogger(__name__)
 
-logger.error("System path from job.py:\n%s\n", sys.path)
-
 if sys.platform == "darwin":
     os.environ["NO_PROXY"] = os.environ.get("NO_PROXY", "novalue")
 
