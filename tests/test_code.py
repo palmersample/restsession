@@ -22,28 +22,6 @@ def get_class(path, class_name):
     return getattr(sys.modules[path], class_name)
 
 
-# class CommonSetup(HttpServerSetup):
-class CommonSetup(aetest.CommonSetup):
-    @aetest.subsection
-    def set_class_from_string(self):
-        globals()["normal_class"] = get_class("src", normal_class)
-        globals()["singleton_class"] = get_class("src", singleton_class)
-
-    @aetest.subsection
-    def mark_parameter_tests_for_looping(self):
-        aetest.loop.mark(TestObjectParameters, test_class=[normal_class,
-                                                           singleton_class]
-                         )
-
-    @aetest.subsection
-    def mark_attribute_tests_for_looping(self, custom_parameters):
-        aetest.loop.mark(TestObjectAttributes, test_class=[normal_class,
-                                                           singleton_class]
-                         )
-
-
-
-# class TestObjectCreation(aetest.Testcase):
 class TestObjectCreation(aetest.Testcase):
     @aetest.test
     def test_object_is_not_singleton(self):
