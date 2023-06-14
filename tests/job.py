@@ -20,15 +20,14 @@ import all_tests
 logger = logging.getLogger(__name__)
 
 
-
 if platform == "darwin":
     os.environ["NO_PROXY"] = os.environ.get("NO_PROXY", "novalue")
 
 def main(runtime):
     # webserver_port = get_free_port()
     test_path = os.path.dirname(os.path.abspath(__file__))
-    # result = run(testscript=f"{test_path}/test_code.py",
-    #              datafile=f"{test_path}/datafiles/datafile.yml")
+    # run(testscript=f"{test_path}/test_code.py",
+    #     datafile=f"{test_path}/datafiles/datafile.yml")
 
     run(testscript=f"{test_path}/all_tests.py",
         datafile=f"{test_path}/datafiles/datafile.yml")

@@ -10,18 +10,20 @@ from types import MappingProxyType
 # 303: See other
 # 307: Temporary redirect (HTTP/1.1)
 # 308: Permanent redirect (no HTTP method change)
-REDIRECT_STATUS_CODES = [301, 302, 303, 307, 308]
+REDIRECT_STATUS_CODES = (301, 302, 303, 307, 308)
 
 # 408: Request timeout
 # 413: Payload too large
 # 429: Too many requests
-CLIENT_ERROR_CODES = [408, 413, 429]
+CLIENT_ERROR_CODES = (408, 413, 429)
 
 # 503: Service Unavailable - should be temporary
-SERVER_ERROR_CODES = [503]
+SERVER_ERROR_CODES = (503,)
 
 SESSION_DEFAULTS = MappingProxyType(
     {
+        "headers": {},
+        "auth_headers": {},
         "timeout": 5,
         "retries": 3,
         "max_redirect": 16,

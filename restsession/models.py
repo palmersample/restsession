@@ -7,7 +7,8 @@ a main "entry" class to be used for full model validation.
 # pylint: disable=no-name-in-module, no-self-argument, too-few-public-methods
 import logging
 from typing import (Optional,
-                    Union)
+                    Union,
+                    Callable)
 from pydantic import (BaseModel,
                       AnyHttpUrl,
                       StrictBool,
@@ -16,10 +17,12 @@ from pydantic import (BaseModel,
                       StrictStr,
                       ValidationError,
                       conint,
+                      conlist,
                       parse_obj_as,
                       validator)
 from requests.auth import AuthBase
 from .defaults import SESSION_DEFAULTS
+from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +155,6 @@ class RetryStatusCodeListValidator(BaseModel):
     #     ]
     # ] = []
 
-    # pylint: disable=loop-invariant-statement
     @validator("retry_status_code_list", pre=True)
     def validate_retry_status_code_list(cls, value):
         """
@@ -246,7 +248,7 @@ class BaseUrlValidator(BaseModel):
     """
     Model for HTTP Base URL definition
     """
-    base_url: Optional[AnyHttpUrl] = None
+    base_url: Optional[str] = None
 
     @validator("base_url", pre=True)
     def validate_base_url(cls, value):
@@ -355,6 +357,9 @@ class AuthValidator(BaseModel):
     auth: Optional[Union[tuple[str, str], AuthBase]] = None
 
     class Config:
+        """
+        pydantic configuration options for AuthValidator.
+        """
         arbitrary_types_allowed = True
 
     @validator("auth", pre=True)
@@ -409,11 +414,34 @@ class MaxReauthValidator(BaseModel):
         return result
 
 
+class RedirectHeaderHookValidator(BaseModel):
+    """
+    Model for the request exception hook
+    """
+    redirect_header_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = [remove_custom_auth_header_on_redirect]
+
+
+class RequestExceptionHookValidator(BaseModel):
+    """
+    Model for the request exception hook
+    """
+    request_exception_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = [default_request_exception_hook]
+
+
 class ResponseHookValidator(BaseModel):
     """
     Model for HTTP Basic Authentication - Password
     """
-    response_hooks: Optional[list] = []
+    response_hooks: Optional[list[Callable]] = []
+
+
+class SessionHeaderValidator(BaseModel):
+    """
+    Model for HTTP header validation. Make sure the input is a dict and, if
+    not null, that the k/v pairs are strings.
+    """
+    headers: Optional[dict[str, str]] = {}
+    auth_headers: Optional[dict[str, str]] = {}
 
 
 # pylint: disable-next=too-many-ancestors, too-many-instance-attributes
@@ -430,7 +458,10 @@ class HttpSessionArguments(ResponseHookValidator,
                            BackoffFactorValidator,
                            MaxRedirectValidator,
                            RetriesValidator,
-                           TimeoutValidator
+                           TimeoutValidator,
+                           SessionHeaderValidator,
+                           RequestExceptionHookValidator,
+                           RedirectHeaderHookValidator
                            ):
     """
     Validate all session arguments by inheriting each individual BaseModel

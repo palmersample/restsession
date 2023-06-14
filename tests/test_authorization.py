@@ -275,6 +275,78 @@ class TestRequestAuthorization(BaseHttpServer):
             f"Instead, server received {TargetMockServerRequestHandler.received_auth}"
 
     @aetest.test
+    def test_basic_auth_header_not_removed_on_same_origin_redirect(self, url_path, basic_auth_username, basic_auth_password):
+        class FirstMockServerRequestHandler(BaseHTTPRequestHandler):
+            server_address = None
+            request_count = 0
+            next_server = None
+            received_auth = None
+
+            def do_GET(self):
+                if re.match(r"^/$", self.path):
+                    self.__class__.request_count += 1
+                    logger.error("Received request to / (%s)", self.path)
+                    self.__class__.received_auth = self.headers.get("Authorization", None)
+                    self.send_response(301)
+                    self.send_header(
+                        "Content-Type", "application/json; charset=utf-8"
+                    )
+                    logger.error("Redirecting to %s", self.__class__.next_server)
+                    self.send_header("Location", self.__class__.next_server)
+                    self.end_headers()
+                elif re.match(f"/{url_path}", self.path):
+                    self.__class__.request_count += 1
+                    logger.error("Received request to '%s'", url_path)
+                    self.__class__.received_auth = self.headers.get("Authorization", None)
+                    self.send_response(200)
+                    self.send_header(
+                        "Content-Type", "application/json; charset=utf-8"
+                    )
+                    # self.send_header("Location", self.__class__.next_server)
+                    self.end_headers()
+
+                return
+
+        test_server = self.start_mock_server(FirstMockServerRequestHandler)
+
+        logger.error("Target: %s", FirstMockServerRequestHandler.server_address)
+
+        base_url = f"http://{FirstMockServerRequestHandler.server_address}/"
+        target_url = f"http://{FirstMockServerRequestHandler.server_address}/{url_path}"
+
+        FirstMockServerRequestHandler.next_server = target_url
+
+        authorization_string = f"{basic_auth_username}:{basic_auth_password}"
+        base64_auth = base64.b64encode(bytes(authorization_string, 'utf-8')).decode('utf-8')
+        expected_auth_value = f"Basic {base64_auth}"
+
+        expected_request_count = 2
+
+        test_class = self.parameters["test_class"]
+
+        if hasattr(test_class, "_instances"):
+            test_class._instances = {}
+
+        test_instance = test_class(base_url=base_url, username=basic_auth_username, password=basic_auth_password)
+
+        try:
+            test_instance.get("/")
+        except Exception as err:
+            self.failed(f"Unexpected exception was raised:\n{err}")
+        finally:
+            self.start_mock_server(test_server)
+
+        assert FirstMockServerRequestHandler.request_count == expected_request_count, \
+            f"Expected first server to reflect {expected_request_count} requests, " \
+            f"Actual was {FirstMockServerRequestHandler.request_count}"
+        assert FirstMockServerRequestHandler.received_auth == expected_auth_value, \
+            f"First server expected auth header '{expected_auth_value}', " \
+            f"server received {FirstMockServerRequestHandler.received_auth}"
+        assert FirstMockServerRequestHandler.received_auth is not None, \
+            f"On redirect to the same host, Authorization header should be present. " \
+            f"Instead, server received {FirstMockServerRequestHandler.received_auth}"
+
+    @aetest.test
     def test_custom_auth_header_removed_on_redirect(self, url_path, custom_auth_token_one):
         class FirstMockServerRequestHandler(BaseHTTPRequestHandler):
             server_address = None
@@ -335,8 +407,11 @@ class TestRequestAuthorization(BaseHttpServer):
 
         # TODO - Add test_instance.custom_auth_header attribute/setter. For each custom auth header,
         #   remove the key using the new remove_custom_auth_header hook
-        test_instance.http.headers.update({"X-Auth-Token": custom_auth_token_one, "Authorization": custom_auth_token_one})
-        # test_instance.http.headers
+        # test_instance.http.headers.update({"X-Auth-Token": custom_auth_token_one, "Authorization": custom_auth_token_one})
+        test_instance.auth_headers = {
+            "X-Auth-Token": custom_auth_token_one,
+            "Authorization": custom_auth_token_one
+        }
 
         try:
             test_instance.get(url_path)
@@ -361,6 +436,85 @@ class TestRequestAuthorization(BaseHttpServer):
         assert TargetMockServerRequestHandler.received_auth is None, \
             f"On redirect, expected second server to NOT receive Authorization header. " \
             f"Instead, server received {TargetMockServerRequestHandler.received_auth}"
+
+    @aetest.test
+    def test_custom_auth_header_not_removed_on_same_origin_redirect(self, url_path, custom_auth_token_one):
+        class FirstMockServerRequestHandler(BaseHTTPRequestHandler):
+            server_address = None
+            request_count = 0
+            next_server = None
+            received_auth = None
+
+            def do_GET(self):
+                if re.match(r"^/$", self.path):
+                    self.__class__.request_count += 1
+                    logger.error("Received request to / (%s)", self.path)
+                    self.__class__.received_auth = self.headers.get("X-Auth-Token", None)
+                    self.send_response(301)
+                    self.send_header(
+                        "Content-Type", "application/json; charset=utf-8"
+                    )
+                    logger.error("Redirecting to %s", self.__class__.next_server)
+                    self.send_header("Location", self.__class__.next_server)
+                    self.end_headers()
+                elif re.match(f"/{url_path}", self.path):
+                    self.__class__.request_count += 1
+                    logger.error("Received request to '%s'", url_path)
+                    self.__class__.received_auth = self.headers.get("X-Auth-Token", None)
+                    self.send_response(200)
+                    self.send_header(
+                        "Content-Type", "application/json; charset=utf-8"
+                    )
+                    # self.send_header("Location", self.__class__.next_server)
+                    self.end_headers()
+
+                return
+
+        test_server = self.start_mock_server(FirstMockServerRequestHandler)
+
+        logger.error("Target: %s", FirstMockServerRequestHandler.server_address)
+
+        base_url = f"http://{FirstMockServerRequestHandler.server_address}/"
+        target_url = f"http://{FirstMockServerRequestHandler.server_address}/{url_path}"
+
+        FirstMockServerRequestHandler.next_server = target_url
+
+        expected_auth_value = custom_auth_token_one
+
+        expected_request_count = 2
+
+        test_class = self.parameters["test_class"]
+
+        if hasattr(test_class, "_instances"):
+            test_class._instances = {}
+
+        test_instance = test_class(base_url=base_url)
+
+        # TODO - Add test_instance.custom_auth_header attribute/setter. For each custom auth header,
+        #   remove the key using the new remove_custom_auth_header hook
+        # test_instance.http.headers.update({"X-Auth-Token": custom_auth_token_one, "Authorization": custom_auth_token_one})
+        test_instance.auth_headers = {
+            "X-Auth-Token": custom_auth_token_one,
+            "Authorization": custom_auth_token_one
+        }
+
+
+        try:
+            test_instance.get("/")
+        except Exception as err:
+            self.failed(f"Unexpected exception was raised:\n{err}")
+        finally:
+            self.start_mock_server(test_server)
+
+        assert FirstMockServerRequestHandler.request_count == expected_request_count, \
+            f"Expected first server to reflect {expected_request_count} requests, " \
+            f"Actual was {FirstMockServerRequestHandler.request_count}"
+        assert FirstMockServerRequestHandler.received_auth == custom_auth_token_one, \
+            f"First server expected auth header '{custom_auth_token_one}', " \
+            f"server received {FirstMockServerRequestHandler.received_auth}"
+        assert FirstMockServerRequestHandler.received_auth is not None, \
+            f"On redirect to the same host, Authorization header should be present. " \
+            f"Instead, server received {FirstMockServerRequestHandler.received_auth}"
 
     @aetest.test
     def test_custom_auth_class(self, url_path, custom_auth_token_one, basic_auth_username, basic_auth_password):
@@ -569,7 +723,8 @@ class TestRequestAuthorization(BaseHttpServer):
                     return test_instance.http.send(response.request)
 
         # test_instance.add_response_hooks(auth_response_hook)
-        test_instance.replace_response_hooks(auth_response_hook)
+        # test_instance.replace_response_hooks(auth_response_hook)
+        test_instance.response_hooks = auth_response_hook
 
         try:
             test_instance.get(target_url)
@@ -728,8 +883,7 @@ class TestRequestAuthorization(BaseHttpServer):
                                                  response.request.url,
                                                  data=response.request.body)
 
-        # test_instance.add_response_hooks(auth_response_hook)
-        test_instance.replace_response_hooks(auth_response_hook)
+        test_instance.response_hooks = auth_response_hook
 
         try:
             test_instance.get(url_path)
