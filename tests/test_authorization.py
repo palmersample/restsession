@@ -199,13 +199,13 @@ class TestRequestAuthorization(BaseHttpServer):
             def do_GET(self):
                 if re.match(f"/{url_path}", self.path):
                     self.__class__.request_count += 1
-                    logger.error("Received request")
+                    logger.info("Received request")
                     self.__class__.received_auth = self.headers.get("Authorization", None)
                     self.send_response(301)
                     self.send_header(
                         "Content-Type", "application/json; charset=utf-8"
                     )
-                    logger.error("Redirecting to %s", self.__class__.next_server)
+                    logger.info("Redirecting to %s", self.__class__.next_server)
                     self.send_header("Location", self.__class__.next_server)
                     self.end_headers()
                 return
@@ -218,7 +218,7 @@ class TestRequestAuthorization(BaseHttpServer):
             def do_GET(self):
                 if re.match(f"/{url_path}", self.path):
                     self.__class__.request_count += 1
-                    logger.error("Got request on the SECOND server")
+                    logger.info("Got request on the SECOND server")
                     self.__class__.received_auth = self.headers.get("Authorization", None)
                     self.send_response(200)
                     self.send_header(
@@ -230,7 +230,7 @@ class TestRequestAuthorization(BaseHttpServer):
         first_test_server = self.start_mock_server(FirstMockServerRequestHandler)
         target_test_server = self.start_mock_server(TargetMockServerRequestHandler)
 
-        logger.error("First target: %s\nSecond target: %s",
+        logger.info("First target: %s\nSecond target: %s",
                      FirstMockServerRequestHandler.server_address,
                      TargetMockServerRequestHandler.server_address)
 
@@ -285,18 +285,18 @@ class TestRequestAuthorization(BaseHttpServer):
             def do_GET(self):
                 if re.match(r"^/$", self.path):
                     self.__class__.request_count += 1
-                    logger.error("Received request to / (%s)", self.path)
+                    logger.info("Received request to / (%s)", self.path)
                     self.__class__.received_auth = self.headers.get("Authorization", None)
                     self.send_response(301)
                     self.send_header(
                         "Content-Type", "application/json; charset=utf-8"
                     )
-                    logger.error("Redirecting to %s", self.__class__.next_server)
+                    logger.info("Redirecting to %s", self.__class__.next_server)
                     self.send_header("Location", self.__class__.next_server)
                     self.end_headers()
                 elif re.match(f"/{url_path}", self.path):
                     self.__class__.request_count += 1
-                    logger.error("Received request to '%s'", url_path)
+                    logger.info("Received request to '%s'", url_path)
                     self.__class__.received_auth = self.headers.get("Authorization", None)
                     self.send_response(200)
                     self.send_header(
@@ -309,7 +309,7 @@ class TestRequestAuthorization(BaseHttpServer):
 
         test_server = self.start_mock_server(FirstMockServerRequestHandler)
 
-        logger.error("Target: %s", FirstMockServerRequestHandler.server_address)
+        logger.info("Target: %s", FirstMockServerRequestHandler.server_address)
 
         base_url = f"http://{FirstMockServerRequestHandler.server_address}/"
         target_url = f"http://{FirstMockServerRequestHandler.server_address}/{url_path}"
@@ -357,7 +357,7 @@ class TestRequestAuthorization(BaseHttpServer):
             def do_GET(self):
                 if re.match(f"/{url_path}", self.path):
                     self.__class__.request_count += 1
-                    logger.error("Headers received BEFORE redirect:\n%s", self.headers)
+                    logger.info("Headers received BEFORE redirect:\n%s", self.headers)
                     self.__class__.received_auth = self.headers.get("X-Auth-Token", None)
                     self.send_response(301)
                     self.send_header(
@@ -375,7 +375,7 @@ class TestRequestAuthorization(BaseHttpServer):
             def do_GET(self):
                 if re.match(f"/{url_path}", self.path):
                     self.__class__.request_count += 1
-                    logger.error("Headers received after redirect:\n%s", self.headers)
+                    logger.info("Headers received after redirect:\n%s", self.headers)
                     self.__class__.received_auth = self.headers.get("X-Auth-Token", None)
                     self.send_response(200)
                     self.send_header(
@@ -387,9 +387,9 @@ class TestRequestAuthorization(BaseHttpServer):
         first_test_server = self.start_mock_server(FirstMockServerRequestHandler)
         target_test_server = self.start_mock_server(TargetMockServerRequestHandler)
 
-        logger.error("First server: %s\nSecond server: %s",
-                     FirstMockServerRequestHandler.server_address,
-                     TargetMockServerRequestHandler.server_address)
+        logger.info("First server: %s\nSecond server: %s",
+                    FirstMockServerRequestHandler.server_address,
+                    TargetMockServerRequestHandler.server_address)
 
         base_url = f"http://{FirstMockServerRequestHandler.server_address}/"
         target_url = f"http://{TargetMockServerRequestHandler.server_address}/{url_path}"
@@ -450,18 +450,18 @@ class TestRequestAuthorization(BaseHttpServer):
             def do_GET(self):
                 if re.match(r"^/$", self.path):
                     self.__class__.request_count += 1
-                    logger.error("Received request to / (%s)", self.path)
+                    logger.info("Received request to / (%s)", self.path)
                     self.__class__.received_auth = self.headers.get("X-Auth-Token", None)
                     self.send_response(301)
                     self.send_header(
                         "Content-Type", "application/json; charset=utf-8"
                     )
-                    logger.error("Redirecting to %s", self.__class__.next_server)
+                    logger.info("Redirecting to %s", self.__class__.next_server)
                     self.send_header("Location", self.__class__.next_server)
                     self.end_headers()
                 elif re.match(f"/{url_path}", self.path):
                     self.__class__.request_count += 1
-                    logger.error("Received request to '%s'", url_path)
+                    logger.info("Received request to '%s'", url_path)
                     self.__class__.received_auth = self.headers.get("X-Auth-Token", None)
                     self.send_response(200)
                     self.send_header(
@@ -474,7 +474,7 @@ class TestRequestAuthorization(BaseHttpServer):
 
         test_server = self.start_mock_server(FirstMockServerRequestHandler)
 
-        logger.error("Target: %s", FirstMockServerRequestHandler.server_address)
+        logger.info("Target: %s", FirstMockServerRequestHandler.server_address)
 
         base_url = f"http://{FirstMockServerRequestHandler.server_address}/"
         target_url = f"http://{FirstMockServerRequestHandler.server_address}/{url_path}"
@@ -728,7 +728,7 @@ class TestRequestAuthorization(BaseHttpServer):
                 if response.status_code == 401:
                     # test_instance.http.auth.reauth()
                     test_instance.reauth()
-                    logger.error("Resending request...")
+                    logger.info("Resending request...")
                     return test_instance.http.send(response.request)
 
         # test_instance.add_response_hooks(auth_response_hook)
@@ -845,7 +845,7 @@ class TestRequestAuthorization(BaseHttpServer):
                     logger.info("Token already present")
 
             def __call__(self, r):
-                logger.error("Calling the auth token instance")
+                logger.info("Calling the auth token instance")
                 r.headers["X-Auth-Token"] = self.token
                 self.__class__.header_usage_count += 1
                 return r
@@ -888,7 +888,7 @@ class TestRequestAuthorization(BaseHttpServer):
                                    )
 
         def auth_response_hook(response, **kwargs):  # pylint: disable=unused-argument
-            logger.error("Response hook locals: %s", locals())
+            logger.info("Response hook locals: %s", locals())
             try:
                 response.raise_for_status()
             except requests.exceptions.HTTPError:

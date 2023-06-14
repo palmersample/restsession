@@ -33,8 +33,8 @@ class TestObjectCreation(aetest.Testcase):
             object_one = test_class()
             object_two = test_class()
 
-            logger.error("Object one: %s", object_one)
-            logger.error("Object two: %s", object_two)
+            logger.info("Object one: %s", object_one)
+            logger.info("Object two: %s", object_two)
 
             assert object_one is not object_two
         else:
@@ -51,15 +51,15 @@ class TestObjectCreation(aetest.Testcase):
             object_one = test_class()
             object_two = test_class()
 
-            logger.error("Object one: %s", object_one)
-            logger.error("Object two: %s", object_two)
+            logger.info("Object one: %s", object_one)
+            logger.info("Object two: %s", object_two)
 
             assert object_one is object_two
 
-            logger.error("Dir of object is:\n%s", dir(object_one))
-            logger.error("Current count of instances: %s", test_instance.__class__._instances)
+            logger.info("Dir of object is:\n%s", dir(object_one))
+            logger.info("Current count of instances: %s", test_instance.__class__._instances)
             test_class._instances = {}
-            logger.error("Current count of instances: %s", test_instance.__class__._instances)
+            logger.info("Current count of instances: %s", test_instance.__class__._instances)
         else:
             self.skipped("Non-singleton class received as param - not testing.")
 
@@ -73,7 +73,7 @@ class TestObjectParameters(aetest.Testcase):
 
         with test_class(**default_parameters) as class_instance:
             if hasattr(test_class, "_instances"):
-                logger.error("Instances: %s", test_class._instances)
+                logger.info("Instances: %s", test_class._instances)
                 assert test_class._instances != {}
             non_hook_params = {k: v for k, v in class_instance._session_params.dict().items() if k in default_parameters}
             assert non_hook_params == default_parameters

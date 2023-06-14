@@ -64,7 +64,7 @@ class TestRequestRetries(BaseHttpServer):
             f"Expected {expected_retry_count} retries, " \
             f"server received {MockServerRequestHandler.retry_count}"
 
-        logger.error("Total time for request: %s", end_time)
+        logger.info("Total time for request: %s", end_time)
 
         assert end_time >= request_retry_count, \
             "Total time of requests should be larger than the request retry Count.\n" \
@@ -127,7 +127,7 @@ class TestRequestRetries(BaseHttpServer):
             f"Expected {expected_retry_count} retries, " \
             f"server received {MockServerRequestHandler.retry_count}"
 
-        logger.error("Total time for request: %s", end_time)
+        logger.info("Total time for request: %s", end_time)
 
         assert end_time < request_retry_count, \
             "Total time of requests should be less than the request retry Count.\n" \
