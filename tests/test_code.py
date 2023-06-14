@@ -1,15 +1,14 @@
 import logging
 from pyats import aetest
-from genie.harness.base import Trigger
 from pydantic import ValidationError
 import sys
-from pathlib import Path # if you haven't already done so
+from pathlib import Path
 
 file = Path(__file__).resolve()
 parent, root = file.parent, file.parents[1]
 sys.path.append(str(root))
 
-from restsession import HttpSessionClass, HttpSessionSingletonClass
+# from restsession import HttpSessionClass, HttpSessionSingletonClass
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +54,8 @@ class TestObjectCreation(aetest.Testcase):
             logger.error("Object one: %s", object_one)
             logger.error("Object two: %s", object_two)
 
-
             assert object_one is object_two
+
             logger.error("Dir of object is:\n%s", dir(object_one))
             logger.error("Current count of instances: %s", test_instance.__class__._instances)
             test_class._instances = {}
@@ -66,7 +65,6 @@ class TestObjectCreation(aetest.Testcase):
 
 
 class TestObjectParameters(aetest.Testcase):
-# class TestObjectParameters(Trigger):
     @aetest.test
     def test_object_with_context_manager(self, default_parameters):
         test_class = self.parameters["test_class"]
@@ -82,7 +80,6 @@ class TestObjectParameters(aetest.Testcase):
 
         if hasattr(class_instance.__class__, "_instances"):
             assert test_class.__class__._instances == {}
-
 
     @aetest.test
     def test_default_parameters(self, default_parameters):
@@ -102,7 +99,7 @@ class TestObjectParameters(aetest.Testcase):
         except ValidationError:
             self.failed("ValidationError caught on expected valid input")
         else:
-            self.passed(f"Params retrieves")
+            self.passed("Params retrieves")
 
     @aetest.test
     def test_custom_parameters(self, default_parameters, custom_parameters):
@@ -136,7 +133,7 @@ class TestObjectParameters(aetest.Testcase):
                 logger.info("Explicit retrieve of timeout: %s", new_result.timeout)
                 assert non_hook_params == custom_parameters, "No match on second instance"
                 assert new_result is test_result, "Not a singleton."
-            self.passed(f"Params retrieved")
+            self.passed("Params retrieved")
 
     @aetest.test
     def test_bad_parameters(self, invalid_parameters, default_parameters):
@@ -156,14 +153,14 @@ class TestObjectParameters(aetest.Testcase):
         except ValidationError:
             self.failed("ValidationError caught on expected valid input")
         else:
-            self.passed(f"Params retrieves")
+            self.passed("Params retrieves")
 
 
 class TestObjectAttributes(aetest.Testcase):
     @aetest.setup
     def mark_test_for_looping(self, custom_parameters):
         aetest.loop.mark(self.test_object_attributes,
-                         attribute_kv_pairs=[(k, v) for k,v in custom_parameters.items()])
+                         attribute_kv_pairs=[(k, v) for k, v in custom_parameters.items()])
 
     @aetest.test
     def test_object_attributes(self, section, attribute_kv_pairs):
@@ -181,28 +178,3 @@ class TestObjectAttributes(aetest.Testcase):
             self.failed("Invalid attribute: %s", attr_name)
         else:
             self.passed("Attribute value matched expected")
-
-
-
-        # logger.error(attribute_kv_pairs)
-
-
-
-    # @aetest.test
-    # def base_url_change(self, custom_parameters):
-    #     test_class = self.parameters["test_class"]
-    #     test_class._instances = {}
-    #
-    #     test_base_url = "http://localhost.localdomain/restconf/data/"
-    #
-    #     logger.info("Starting base URL session to URL: %s", custom_parameters["base_url"])
-    #     test_result = test_class(**custom_parameters)
-    #     logger.info("Base URL is: %s", test_result.base_url)
-    #     assert test_result.base_url == custom_parameters["base_url"]
-    #     logger.info("Changing to base URL to %s", test_base_url)
-    #     test_result.base_url = test_base_url
-    #     assert test_result.base_url == test_base_url
-
-
-if __name__ == "__main__":
-    aetest.main()

@@ -34,10 +34,10 @@ class LocalSetup(aetest.Testcase):
         aetest.loop.mark(object_creation, test_class=all_classes)
         aetest.loop.mark(object_params, test_class=all_classes)
         aetest.loop.mark(object_attrs, test_class=all_classes)
-        # aetest.loop.mark(basic_requests, test_class=all_classes)
-        # aetest.loop.mark(request_retries, test_class=all_classes)
-        # aetest.loop.mark(request_redirect, test_class=all_classes)
-        # aetest.loop.mark(request_auth, test_class=all_classes)
+        aetest.loop.mark(basic_requests, test_class=all_classes)
+        aetest.loop.mark(request_retries, test_class=all_classes)
+        aetest.loop.mark(request_redirect, test_class=all_classes)
+        aetest.loop.mark(request_auth, test_class=all_classes)
 
 
 class object_creation(TestObjectCreation):
@@ -52,17 +52,17 @@ class object_attrs(TestObjectAttributes):
     ...
 
 
-# class basic_requests(TestBasicRequests):
-#     ...
-#
-#
-# class request_retries(TestRequestRetries):
-#     ...
-#
-#
-# class request_redirect(TestRequestRedirects):
-#     ...
-#
-#
-# class request_auth(TestRequestAuthorization):
-#     ...
+class basic_requests(TestBasicRequests):
+    ...
+
+
+class request_retries(TestRequestRetries):
+    ...
+
+
+class request_redirect(TestRequestRedirects):
+    ...
+
+
+class request_auth(TestRequestAuthorization):
+    ...

@@ -387,7 +387,9 @@ class TestRequestAuthorization(BaseHttpServer):
         first_test_server = self.start_mock_server(FirstMockServerRequestHandler)
         target_test_server = self.start_mock_server(TargetMockServerRequestHandler)
 
-        logger.error("First server: %s\nSecond server: %s", FirstMockServerRequestHandler.server_address, TargetMockServerRequestHandler.server_address)
+        logger.error("First server: %s\nSecond server: %s",
+                     FirstMockServerRequestHandler.server_address,
+                     TargetMockServerRequestHandler.server_address)
 
         base_url = f"http://{FirstMockServerRequestHandler.server_address}/"
         target_url = f"http://{TargetMockServerRequestHandler.server_address}/{url_path}"
@@ -498,7 +500,6 @@ class TestRequestAuthorization(BaseHttpServer):
             "Authorization": custom_auth_token_one
         }
 
-
         try:
             test_instance.get("/")
         except Exception as err:
@@ -509,15 +510,19 @@ class TestRequestAuthorization(BaseHttpServer):
         assert FirstMockServerRequestHandler.request_count == expected_request_count, \
             f"Expected first server to reflect {expected_request_count} requests, " \
             f"Actual was {FirstMockServerRequestHandler.request_count}"
-        assert FirstMockServerRequestHandler.received_auth == custom_auth_token_one, \
-            f"First server expected auth header '{custom_auth_token_one}', " \
+        assert FirstMockServerRequestHandler.received_auth == expected_auth_value, \
+            f"First server expected auth header '{expected_auth_value}', " \
             f"server received {FirstMockServerRequestHandler.received_auth}"
         assert FirstMockServerRequestHandler.received_auth is not None, \
             f"On redirect to the same host, Authorization header should be present. " \
             f"Instead, server received {FirstMockServerRequestHandler.received_auth}"
 
     @aetest.test
-    def test_custom_auth_class(self, url_path, custom_auth_token_one, basic_auth_username, basic_auth_password):
+    def test_custom_auth_class(self,  # noqa: C901
+                               url_path,
+                               custom_auth_token_one,
+                               basic_auth_username,
+                               basic_auth_password):
         class AuthMockServerRequestHandler(BaseHTTPRequestHandler):
             server_address = None
             request_count = 0
@@ -623,7 +628,11 @@ class TestRequestAuthorization(BaseHttpServer):
             f"Expected: {expected_auth_header_usage_count}, received: {ExampleTokenAuth.header_usage_count}"
 
     @aetest.test
-    def test_custom_auth_retry_on_failure(self, url_path, custom_auth_token_one, basic_auth_username, basic_auth_password):
+    def test_custom_auth_retry_on_failure(self,  # noqa: C901
+                                          url_path,
+                                          custom_auth_token_one,
+                                          basic_auth_username,
+                                          basic_auth_password):
         class AuthMockServerRequestHandler(BaseHTTPRequestHandler):
             server_address = None
             request_count = 0
@@ -762,7 +771,13 @@ class TestRequestAuthorization(BaseHttpServer):
             f"Expected: {expected_auth_header_usage_count}, received: {ExampleTokenAuth.header_usage_count}"
 
     @aetest.test
-    def test_add_custom_auth_retry(self, url_path, request_retry_count, custom_auth_token_one, custom_auth_token_two, basic_auth_username, basic_auth_password):
+    def test_add_custom_auth_retry(self,  # noqa: C901
+                                   url_path,
+                                   request_retry_count,
+                                   custom_auth_token_one,
+                                   custom_auth_token_two,
+                                   basic_auth_username,
+                                   basic_auth_password):
         class AuthMockServerRequestHandler(BaseHTTPRequestHandler):
             server_address = None
             request_count = 0
@@ -895,11 +910,6 @@ class TestRequestAuthorization(BaseHttpServer):
             self.stop_mock_server(test_server)
             self.stop_mock_server(target_server)
 
-
-        # test_instance.get(f"http://{TargetMockServerRequestHandler.server_address}/noplace")
-        # self.stop_mock_server(test_server)
-        # self.stop_mock_server(target_server)
-
         assert len(test_instance.response_hooks) == 1, \
             "Response hook should have been replaced with desired. " \
             f"Instead, there are {len(test_instance.response_hooks)} hooks configured."
@@ -924,5 +934,3 @@ class TestRequestAuthorization(BaseHttpServer):
         assert ExampleTokenAuth.header_usage_count == expected_auth_header_usage_count, \
             "Number of times token header was added does not match expected.\n" \
             f"Expected: {expected_auth_header_usage_count}, received: {ExampleTokenAuth.header_usage_count}"
-
-

@@ -1,7 +1,7 @@
 import logging
 from BaseHttpServer import BaseHttpServer
 from pyats import aetest
-from restsession import HttpSessionClass, HttpSessionSingletonClass
+# from restsession import HttpSessionClass, HttpSessionSingletonClass
 from requests.exceptions import TooManyRedirects
 from http.server import BaseHTTPRequestHandler
 import re
@@ -63,7 +63,6 @@ class TestRequestRedirects(BaseHttpServer):
         assert MockServerRequestHandler.redirect_count == expected_redirect_count, \
             f"Expected {expected_redirect_count} redirects, " \
             f"server received {MockServerRequestHandler.redirect_count}"
-
 
     @aetest.test
     def test_max_redirects(self, url_path, request_redirect_count):

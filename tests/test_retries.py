@@ -1,7 +1,7 @@
 import logging
 from BaseHttpServer import BaseHttpServer
 from pyats import aetest
-from restsession import HttpSessionClass, HttpSessionSingletonClass
+# from restsession import HttpSessionClass, HttpSessionSingletonClass
 from requests.exceptions import RetryError
 from http.server import BaseHTTPRequestHandler
 import re
@@ -35,7 +35,6 @@ class TestRequestRetries(BaseHttpServer):
 
         test_server = self.start_mock_server(MockServerRequestHandler)
         test_url = f"http://{MockServerRequestHandler.server_address}/{url_path}"
-
 
         # Expected retry should be the configured retry count + 1, as the
         # first request hits and then receives a 429. After experiencing
@@ -99,7 +98,6 @@ class TestRequestRetries(BaseHttpServer):
 
         test_server = self.start_mock_server(MockServerRequestHandler)
         test_url = f"http://{MockServerRequestHandler.server_address}/{url_path}"
-
 
         # Expected retry should be the configured retry count + 1, as the
         # first request hits and then receives a 429. After experiencing
@@ -166,7 +164,6 @@ class TestRequestRetries(BaseHttpServer):
 
         test_server = self.start_mock_server(MockServerRequestHandler)
         test_url = f"http://{MockServerRequestHandler.server_address}/{url_path}"
-
 
         # Expected retry should be the configured retry count + 1, as the
         # first request hits and then receives a 429. After experiencing

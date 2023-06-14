@@ -263,7 +263,6 @@ class TestBasicRequests(BaseHttpServer):
             f"Sent payload:\n{json.dumps(test_payload)}\n" \
             f"Received payload:\n{MockServerRequestHandler.received_payload}"
 
-
     @aetest.test
     def test_options(self):
 
@@ -300,7 +299,6 @@ class TestBasicRequests(BaseHttpServer):
         assert response.ok, "Non-OK response code received"
         assert MockServerRequestHandler.request_count == 1, \
             f"Expected 1 request, server received {MockServerRequestHandler.request_count}"
-
 
     @aetest.test
     def test_head(self, url_path):
@@ -379,7 +377,6 @@ class TestBasicRequests(BaseHttpServer):
         assert MockServerRequestHandler.request_count == 1, \
             f"Expected 1 request, server received {MockServerRequestHandler.request_count}"
 
-
     @aetest.test
     def test_non_standard_verb(self, url_path, test_payload):
         class MockServerRequestHandler(BaseHTTPRequestHandler):
@@ -431,4 +428,3 @@ class TestBasicRequests(BaseHttpServer):
             f"Received payload does not match!\n" \
             f"Sent payload:\n{json.dumps(test_payload)}\n" \
             f"Received payload:\n{MockServerRequestHandler.received_payload}"
-
