@@ -5,7 +5,7 @@ log at the end.
 When tests are called one-by-one, a separate section is created in the
 logs.
 """
-
+from test_code import (TestObjectCreation, TestObjectParameters, TestObjectAttributes)
 from test_requests import TestBasicRequests
 from test_retries import TestRequestRetries
 from test_redirects import TestRequestRedirects
@@ -31,23 +31,38 @@ class LocalSetup(aetest.Testcase):
         all_classes = [get_class("restsession", class_name) for class_name in test_classes]
 
         # # Mark each test for looping
-        aetest.loop.mark(basic_requests, test_class=all_classes)
-        aetest.loop.mark(request_retries, test_class=all_classes)
-        aetest.loop.mark(request_redirect, test_class=all_classes)
-        aetest.loop.mark(request_auth, test_class=all_classes)
+        aetest.loop.mark(object_creation, test_class=all_classes)
+        aetest.loop.mark(object_params, test_class=all_classes)
+        aetest.loop.mark(object_attrs, test_class=all_classes)
+        # aetest.loop.mark(basic_requests, test_class=all_classes)
+        # aetest.loop.mark(request_retries, test_class=all_classes)
+        # aetest.loop.mark(request_redirect, test_class=all_classes)
+        # aetest.loop.mark(request_auth, test_class=all_classes)
 
 
-class basic_requests(TestBasicRequests):
+class object_creation(TestObjectCreation):
     ...
 
 
-class request_retries(TestRequestRetries):
+class object_params(TestObjectParameters):
     ...
 
 
-class request_redirect(TestRequestRedirects):
+class object_attrs(TestObjectAttributes):
     ...
 
 
-class request_auth(TestRequestAuthorization):
-    ...
+# class basic_requests(TestBasicRequests):
+#     ...
+#
+#
+# class request_retries(TestRequestRetries):
+#     ...
+#
+#
+# class request_redirect(TestRequestRedirects):
+#     ...
+#
+#
+# class request_auth(TestRequestAuthorization):
+#     ...

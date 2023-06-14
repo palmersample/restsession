@@ -883,8 +883,6 @@ class TestRequestAuthorization(BaseHttpServer):
                                                  response.request.url,
                                                  data=response.request.body)
 
-        # test_instance.add_response_hooks(auth_response_hook)
-        # test_instance.replace_response_hooks(auth_response_hook)
         test_instance.response_hooks = auth_response_hook
 
         try:

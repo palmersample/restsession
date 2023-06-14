@@ -24,11 +24,13 @@ parameters:
     max_redirect: 16
     backoff_factor: 0.3
     retry_status_code_list:
+      - 408
+      - 413
       - 429
-      - 500
-      - 502
+#      - 500
+#      - 502
       - 503
-      - 504
+#      - 504
     retry_method_list:
       - HEAD
       - GET

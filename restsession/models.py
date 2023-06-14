@@ -22,6 +22,7 @@ from pydantic import (BaseModel,
                       validator)
 from requests.auth import AuthBase
 from .defaults import SESSION_DEFAULTS
+from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +248,7 @@ class BaseUrlValidator(BaseModel):
     """
     Model for HTTP Base URL definition
     """
-    base_url: Optional[AnyHttpUrl] = None
+    base_url: Optional[str] = None
 
     @validator("base_url", pre=True)
     def validate_base_url(cls, value):
@@ -417,14 +418,14 @@ class RedirectHeaderHookValidator(BaseModel):
     """
     Model for the request exception hook
     """
-    redirect_header_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = []
+    redirect_header_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = [remove_custom_auth_header_on_redirect]
 
 
 class RequestExceptionHookValidator(BaseModel):
     """
     Model for the request exception hook
     """
-    request_exception_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = []
+    request_exception_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = [default_request_exception_hook]
 
 
 class ResponseHookValidator(BaseModel):
