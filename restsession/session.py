@@ -144,7 +144,7 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 #     return redirect_header_hook
 
 
-class HttpSessionClass:
+class RestSession:
     """
     Main HTTP Session class. On init, create a new HTTP base URL session for the
     object, generate all needed settings for timeout/retries and configure
@@ -608,8 +608,8 @@ class HttpSessionClass:
         :param headers: Dictionary of additional headers for the session.
         :return: None
         """
-        self._session_params.headers.update(headers)
-        self.http.headers.update(self._session_params.headers)
+        self._session_params.headers = headers
+        self.http.headers = self._session_params.headers
 
     @property
     def auth_headers(self):
@@ -631,8 +631,8 @@ class HttpSessionClass:
         :param headers: Dictionary of custom auth headers for the session
         :return: None
         """
-        self._session_params.auth_headers.update(headers)
-        self.http.headers.update(self._session_params.auth_headers)
+        self._session_params.auth_headers = headers
+        self.http.headers = self._session_params.auth_headers
 
         self.redirect_header_hook = remove_custom_auth_header_on_redirect(headers=headers.keys())
 

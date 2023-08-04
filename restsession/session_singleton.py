@@ -8,13 +8,13 @@ methods.
 """
 # pylint: disable=invalid-name
 import logging
-from .session import HttpSessionClass
+from .session import RestSession
 from .metaclass import Singleton
 
 logger = logging.getLogger(__name__)
 
 
-class HttpSessionSingletonClass(HttpSessionClass, metaclass=Singleton):  # , metaclass=Singleton):
+class RestSessionSingleton(RestSession, metaclass=Singleton):  # , metaclass=Singleton):
     """
     Singleton class definition. The only method override is for __exit__ to
     provide a cleanup of the _instances class attribute, effectively removing
@@ -26,4 +26,4 @@ class HttpSessionSingletonClass(HttpSessionClass, metaclass=Singleton):  # , met
         super().__exit__(exc_type, exc_val, exc_tb)
 
         # And set the class _instances variable to an empty dict
-        HttpSessionSingletonClass._instances = {}
+        RestSessionSingleton._instances = {}

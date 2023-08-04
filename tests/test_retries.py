@@ -193,6 +193,61 @@ class TestRequestRetries(BaseHttpServer):
             f"Expected {expected_request_count} request, " \
             f"server received {MockServerRequestHandler.request_count}"
 
+    @aetest.test
+    def test_retries_without_retry_after_header(self, url_path, request_retry_count):
+        class MockServerRequestHandler(BaseHTTPRequestHandler):
+            server_address = None
+            request_count = 0
+            retry_count = 0
+
+            def do_GET(self):
+                if re.match(f"/{url_path}", self.path):
+                    if self.__class__.request_count < expected_retry_count:
+                        self.__class__.request_count += 1
+                        self.__class__.retry_count += 1
+
+                        self.send_response(503)
+                        self.send_header(
+                            "Content-Type", "application/json; charset=utf-8"
+                        )
+                        # self.send_header("Retry-After", "1")
+                    else:
+                        self.__class__.request_count += 1
+                        self.send_response(200)
+                    self.end_headers()
+                return
+
+        test_server = self.start_mock_server(MockServerRequestHandler)
+        test_url = f"http://{MockServerRequestHandler.server_address}/{url_path}"
+
+        # Expected retry should be the configured retry count + 1, as the
+        # first request hits and then receives a 429. After experiencing
+        # (request_retry_count) responses of 429, the exception will be raised.
+        # Each request hitting the server will increment the retry counter
+        expected_retry_count = request_retry_count
+        expected_request_count = request_retry_count + 1
+
+        test_class = self.parameters["test_class"]
+
+        if hasattr(test_class, "_instances"):
+            test_class._instances = {}
+
+        test_instance = test_class(retries=request_retry_count)
+
+        try:
+            test_instance.get(test_url)
+        except Exception as err:
+            self.failed(f"Unexpected exception was raised:\n{err}")
+        finally:
+            self.stop_mock_server(test_server)
+
+        assert MockServerRequestHandler.retry_count == expected_retry_count, \
+            f"Expected {expected_retry_count} retries, " \
+            f"server received {MockServerRequestHandler.retry_count}"
+        assert MockServerRequestHandler.request_count == expected_request_count, \
+            f"Expected {expected_request_count} request, " \
+            f"server received {MockServerRequestHandler.request_count}"
+
 # Need tests for:
 # retry_status_code_list: list[int] = SESSION_DEFAULTS["retry_status_codes"],
 #                 retry_method_list: list[str] = SESSION_DEFAULTS["retry_methods"],
