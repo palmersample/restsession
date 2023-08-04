@@ -1,8 +1,8 @@
 ---
 extends: object_test_attributes.yml
 
-normal_class: HttpSessionClass
-singleton_class: HttpSessionSingletonClass
+normal_class: RestSession
+singleton_class: RestSessionSingleton
 
 parameters:
   url_path: test-url
@@ -28,5 +28,5 @@ testcases:
   LocalSetup:
     parameters:
       test_classes:
-        - HttpSessionClass
-        - HttpSessionSingletonClass
+        - RestSession
+        - RestSessionSingleton

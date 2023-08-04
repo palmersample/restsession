@@ -11,8 +11,8 @@ setup:
             method: all_tests.LocalSetup.loop_marker
             parameters:
                 test_classes:
-                    - HttpSessionClass
-                    - HttpSessionSingletonClass
+                    - RestSession
+                    - RestSessionSingleton
 
 cleanup:
     sections:
