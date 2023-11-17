@@ -24,11 +24,12 @@ SESSION_DEFAULTS = MappingProxyType(
     {
         "headers": {},
         "auth_headers": {},
+        "auth": None,
         "timeout": 5,
         "retries": 3,
         "max_redirect": 16,
         "backoff_factor": 0.3,
-        "retry_status_codes": CLIENT_ERROR_CODES + SERVER_ERROR_CODES,
+        "retry_status_codes": list(CLIENT_ERROR_CODES + SERVER_ERROR_CODES),
         "retry_methods": [
             "HEAD",
             "GET",
@@ -45,4 +46,5 @@ SESSION_DEFAULTS = MappingProxyType(
         "username": None,
         "password": None,
         "max_reauth": 3
-    })
+    }
+)

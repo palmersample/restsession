@@ -19,10 +19,11 @@ from pydantic import (BaseModel,
                       conint,
                       conlist,
                       parse_obj_as,
-                      validator)
+                      field_validator)
 from requests.auth import AuthBase
 from .defaults import SESSION_DEFAULTS
-from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
+from .default_hooks import (remove_custom_auth_header_on_redirect,
+                            default_request_exception_hook)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,8 @@ class TimeoutValidator(BaseModel):
     """
     timeout: StrictInt = None
 
-    @validator("timeout", pre=True)
+    @field_validator("timeout", mode="before")
+    @classmethod
     def validate_timeout(cls, value):
         """
         Validate the requested timeout value. If not an integer or if no
@@ -42,16 +44,19 @@ class TimeoutValidator(BaseModel):
         :param value: Value provided (or None if no value)
         :return: Either the requested timeout value or a default
         """
-        result = SESSION_DEFAULTS["timeout"]
+        # result = SESSION_DEFAULTS["timeout"]
         logger.debug("Validating supplied timeout value: %s", value)
-        try:
-            parse_obj_as(StrictInt, value)
-        except ValidationError:
-            pass
-        else:
-            result = value
-        logger.debug("Returning timeout value: %s", result)
-        return result
+        if not parse_obj_as(StrictInt, value):
+            raise ValueError(f"Supplied timeout '{value}' is not valid. Expected type: int")
+        return value
+        # try:
+        #     parse_obj_as(StrictInt, value)
+        # except ValidationError:
+        #     pass
+        # else:
+        #     result = value
+        # logger.debug("Returning timeout value: %s", result)
+        # return result
 
 
 class RetriesValidator(BaseModel):
@@ -60,7 +65,8 @@ class RetriesValidator(BaseModel):
     """
     retries: StrictInt = None
 
-    @validator("retries", pre=True)
+    @field_validator("retries", mode="before")
+    @classmethod
     def validate_retries(cls, value):
         """
         Validate the requested retry count. If not an integer or if no
@@ -87,7 +93,8 @@ class MaxRedirectValidator(BaseModel):
     """
     max_redirect: StrictInt = None
 
-    @validator("max_redirect", pre=True)
+    @field_validator("max_redirect", mode="before")
+    @classmethod
     def validate_max_redirect(cls, value):
         """
         Validate the requested max_redirect value. If not an integer or if no
@@ -114,7 +121,8 @@ class BackoffFactorValidator(BaseModel):
     """
     backoff_factor: StrictFloat = None
 
-    @validator("backoff_factor", pre=True)
+    @field_validator("backoff_factor", mode="after")
+    @classmethod
     def validate_backoff_factor(cls, value):
         """
         Validate the requested backoff factor. If not a float or if no
@@ -155,7 +163,8 @@ class RetryStatusCodeListValidator(BaseModel):
     #     ]
     # ] = []
 
-    @validator("retry_status_code_list", pre=True)
+    @field_validator("retry_status_code_list", mode="before")
+    @classmethod
     def validate_retry_status_code_list(cls, value):
         """
         Validate the requested retry status code list. If an invalid status
@@ -196,7 +205,8 @@ class RetryMethodListValidator(BaseModel):
     """
     retry_method_list: list[str] = []
 
-    @validator("retry_method_list", pre=True)
+    @field_validator("retry_method_list", mode="after")
+    @classmethod
     def validate_retry_method_list(cls, value):
         """
         Validate the requested retry methods. Any method is permitted due
@@ -223,7 +233,8 @@ class RespectRetryHeadersValidator(BaseModel):
     """
     respect_retry_headers: StrictBool = None
 
-    @validator("respect_retry_headers", pre=True)
+    @field_validator("respect_retry_headers", mode="before")
+    @classmethod
     def validate_respect_retry_headers(cls, value):
         """
         Validate the requested value for the respect_retry_headers parameter.
@@ -250,7 +261,8 @@ class BaseUrlValidator(BaseModel):
     """
     base_url: Optional[str] = None
 
-    @validator("base_url", pre=True)
+    @field_validator("base_url", mode="before")
+    @classmethod
     def validate_base_url(cls, value):
         """
         Validate the requested Base URL. If the parameter is not a valid URL
@@ -277,7 +289,8 @@ class TlsVerifyValidator(BaseModel):
     """
     tls_verify: StrictBool = None
 
-    @validator("tls_verify", pre=True)
+    @field_validator("tls_verify", mode="before")
+    @classmethod
     def validate_tls_verify(cls, value):
         """
         Validate the requested TLS chain verification setting. If invalid
@@ -304,7 +317,8 @@ class UsernameValidator(BaseModel):
     """
     username: Optional[StrictStr] = None
 
-    @validator("username", pre=True)
+    @field_validator("username", mode="before")
+    @classmethod
     def validate_username(cls, value):
         """
         Validate the username is a string.
@@ -330,7 +344,8 @@ class PasswordValidator(BaseModel):
     """
     password: Optional[StrictStr] = None
 
-    @validator("password", pre=True)
+    @field_validator("password", mode="before")
+    @classmethod
     def validate_password(cls, value):
         """
         Validate the password is a string.
@@ -362,7 +377,8 @@ class AuthValidator(BaseModel):
         """
         arbitrary_types_allowed = True
 
-    @validator("auth", pre=True)
+    @field_validator("auth", mode="before")
+    @classmethod
     def validate_auth(cls, value):
         """
         Validate the auth attribute is a tuple of strings or an instance
@@ -393,7 +409,8 @@ class MaxReauthValidator(BaseModel):
     """
     max_reauth: StrictInt = None
 
-    @validator("max_reauth", pre=True)
+    @field_validator("max_reauth")
+    @classmethod
     def validate_max_reauth(cls, value):
         """
         Validate the requested max reauth count. If not an integer or if no
@@ -418,14 +435,18 @@ class RedirectHeaderHookValidator(BaseModel):
     """
     Model for the request exception hook
     """
-    redirect_header_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = [remove_custom_auth_header_on_redirect]
+    redirect_header_hook: Optional[conlist(Callable,
+                                           min_items=0,
+                                           max_items=1)] = [remove_custom_auth_header_on_redirect]
 
 
 class RequestExceptionHookValidator(BaseModel):
     """
     Model for the request exception hook
     """
-    request_exception_hook: Optional[conlist(Callable, min_items=0, max_items=1)] = [default_request_exception_hook]
+    request_exception_hook: Optional[conlist(Callable,
+                                             min_items=0,
+                                             max_items=1)] = [default_request_exception_hook]
 
 
 class ResponseHookValidator(BaseModel):

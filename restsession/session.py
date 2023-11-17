@@ -7,8 +7,13 @@ instantiation and ensure a valid session is available, even if an incorrect
 parameter is supplied.
 """
 import logging
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Callable
 from types import MappingProxyType
+
+import requests.exceptions
+import urllib3.exceptions
+from ssl import SSLError
+from pydantic import (ValidationError, validate_call, StrictInt, StrictFloat, StrictBool, conint, TypeAdapter, AnyHttpUrl, StrictStr, conlist)
 from requests.exceptions import (HTTPError as RequestHTTPError)
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
@@ -17,21 +22,8 @@ from urllib3 import disable_warnings
 from urllib3.util.retry import Retry
 from .defaults import SESSION_DEFAULTS
 from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
-from .models import (
-    HttpSessionArguments,
-    TimeoutValidator,
-    RetriesValidator,
-    MaxRedirectValidator,
-    BackoffFactorValidator,
-    RetryStatusCodeListValidator,
-    RetryMethodListValidator,
-    RespectRetryHeadersValidator,
-    BaseUrlValidator,
-    TlsVerifyValidator,
-    UsernameValidator,
-    PasswordValidator,
-    AuthValidator
-)
+from .newmodels import SessionParamModel, HttpSessionArguments
+from .exceptions import (InvalidParameterError, InitializationError)
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +63,7 @@ class RestSession:
     def __init__(self,
                  headers: dict = SESSION_DEFAULTS["headers"],
                  auth_headers: dict = SESSION_DEFAULTS["auth_headers"],
-                 timeout: int = SESSION_DEFAULTS["timeout"],
+                 timeout: float = SESSION_DEFAULTS["timeout"],
                  retries: int = SESSION_DEFAULTS["retries"],
                  max_redirect: int = SESSION_DEFAULTS["max_redirect"],
                  backoff_factor: float = SESSION_DEFAULTS["backoff_factor"],
@@ -91,7 +83,7 @@ class RestSession:
         a Pydantic model which performs validation and, if necessary, sets
         default values.
 
-        :param timeout: (int) Request timeout in seconds
+        :param timeout: (float) Request timeout in seconds
         :param retries: (int) Total number of retries before failure
         :param max_redirect: (int) Maximum redirects to follow before failure
         :param backoff_factor: (float) Exponential backoff interval for each retry
@@ -105,46 +97,53 @@ class RestSession:
         :param auth: (tuple | AuthBase) If a username/password tuple or an AuthBase instance
             is provided, set the session auth
         """
+        self.http = sessions.BaseUrlSession()
+        self._session_params = HttpSessionArguments(**kwargs)
 
-        if not hasattr(self, "_session_params"):
-            self._session_params = HttpSessionArguments(**locals())
+        for param_name, param_val in locals().items():
+            # if param_val is not None and hasattr(self._session_params, param_name):
+            if param_val is not None and hasattr(self, param_name):
+                try:
+                    # setattr(self._session_params, param_name, param_val)
+                    setattr(self, param_name, param_val)
+                except InvalidParameterError as err:
+                    raise InitializationError(err) from err
 
-        self.http = sessions.BaseUrlSession(base_url=self.base_url)
-        self.http.max_redirects = self.max_redirect
+        self.http.base_url = self._session_params.base_url
+        self.http.timeout = self._session_params.timeout
+        self.http.max_redirects = self._session_params.max_redirect
+        self.http.verify = self._session_params.tls_verify
 
-        self.http.verify = self.tls_verify
         if not self.tls_verify:
             disable_warnings()
 
         # requests handles the redirects, so only apply parameters related to
         # retries with this handler.
         default_retry_strategy = Retry(
-            total=self.retries,
+            total=self._session_params.retries,
             other=0,
             redirect=False,
-            backoff_factor=self.backoff_factor,
-            status_forcelist=self.retry_status_code_list,
-            allowed_methods=self.retry_method_list,
-            respect_retry_after_header=self.respect_retry_headers,
+            backoff_factor=self._session_params.backoff_factor,
+            status_forcelist=self._session_params.retry_status_code_list,
+            allowed_methods=self._session_params.retry_method_list,
+            respect_retry_after_header=self._session_params.respect_retry_headers,
             raise_on_status=True
         )
-
-        self.http.timeout = self.timeout
-
         # Mount http/https to the request session and attach the timeout
         # adapter with defined retry strategy
-        self.http.mount("https://", TimeoutHTTPAdapter(timeout=self.timeout,
+        self.http.mount("https://", TimeoutHTTPAdapter(timeout=self._session_params.timeout,
                                                        max_retries=default_retry_strategy))
 
-        self.http.mount("http://", TimeoutHTTPAdapter(timeout=self.timeout,
+        self.http.mount("http://", TimeoutHTTPAdapter(timeout=self._session_params.timeout,
                                                       max_retries=default_retry_strategy))
 
-        # Is username/password provided, use basic auth. Otherwise if an auth
+        # Is username/password provided, use basic auth. Otherwise, if an auth
         # parameter was passed, initialize the session auth object
-        if self.username and self.password:
-            self.auth = (self.username, self.password)
-        elif self.auth:
-            self.http.auth = self.auth
+        if self._session_params.username and self._session_params.password:
+            self.http.auth = (self._session_params.username, self._session_params.password)
+        elif self._session_params.auth:
+            self.http.auth = self._session_params.auth
+
         self.reauth_count = 0
 
         # Assign the response hooks to the session. This should always be:
@@ -155,8 +154,6 @@ class RestSession:
             headers=auth_headers.keys()
         )
         self.request_exception_hook = default_request_exception_hook
-
-        self.max_reauth = 3
 
     def __enter__(self):
         return self
@@ -185,10 +182,11 @@ class RestSession:
 
         :return: Timeout value from _session_params
         """
+        # return self._session_params.timeout
         return self._session_params.timeout
 
     @timeout.setter
-    def timeout(self, timeout):
+    def timeout(self, timeout: int) -> None:
         """
         Change the HTTP request timeout for the current session instance.
 
@@ -198,11 +196,13 @@ class RestSession:
         :param timeout: Timeout in seconds
         :return: None
         """
-        validated_field = TimeoutValidator(timeout=timeout)
-        self._session_params.timeout = validated_field.timeout
-        for mounted_adapter in self.http.adapters:
-            self.http.get_adapter(mounted_adapter)\
-                .timeout = self._session_params.timeout
+        try:
+            self._session_params.timeout = timeout
+            for mounted_adapter in self.http.adapters:
+                self.http.get_adapter(mounted_adapter)\
+                    .timeout = self._session_params.timeout
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def retries(self):
@@ -214,7 +214,7 @@ class RestSession:
         return self._session_params.retries
 
     @retries.setter
-    def retries(self, retries):
+    def retries(self, retries: StrictInt = SESSION_DEFAULTS["retries"]) -> None:
         """
         Change the number of HTTP retries for the current session instance.
 
@@ -224,11 +224,13 @@ class RestSession:
         :param retries: Number of retries
         :return: None
         """
-        validated_field = RetriesValidator(retries=retries)
-        self._session_params.retries = validated_field.retries
-        for mounted_adapter in self.http.adapters:
-            self.http.get_adapter(mounted_adapter)\
-                .max_retries.total = self._session_params.retries
+        try:
+            self._session_params.retries = retries
+            for mounted_adapter in self.http.adapters:
+                self.http.get_adapter(mounted_adapter)\
+                    .max_retries.total = self._session_params.retries
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def max_redirect(self):
@@ -240,7 +242,7 @@ class RestSession:
         return self._session_params.max_redirect
 
     @max_redirect.setter
-    def max_redirect(self, max_redirect):
+    def max_redirect(self, max_redirect: StrictInt = SESSION_DEFAULTS["max_redirect"]) -> None:
         """
         Change the max number of redirects for the current session instance.
 
@@ -250,12 +252,13 @@ class RestSession:
         :param max_redirect: Max redirects to follow
         :return: None
         """
-        validated_field = MaxRedirectValidator(max_redirect=max_redirect)
-        self._session_params.max_redirect = validated_field.max_redirect
-        # self.http.max_redirects = self._session_params.max_redirect
-        for mounted_adapter in self.http.adapters:
-            self.http.get_adapter(mounted_adapter)\
-                .max_retries.redirect = self._session_params.max_redirect
+        try:
+            self._session_params.max_redirect = max_redirect
+            for mounted_adapter in self.http.adapters:
+                self.http.get_adapter(mounted_adapter)\
+                    .max_retries.redirect = self._session_params.max_redirect
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def backoff_factor(self):
@@ -271,7 +274,7 @@ class RestSession:
         return self._session_params.backoff_factor
 
     @backoff_factor.setter
-    def backoff_factor(self, backoff_factor):
+    def backoff_factor(self, backoff_factor: StrictFloat = SESSION_DEFAULTS["backoff_factor"]) -> None:
         """
         Change the backoff factor for the current session instance.
 
@@ -281,11 +284,13 @@ class RestSession:
         :param backoff_factor: Backoff factor for retries
         :return: None
         """
-        validated_field = BackoffFactorValidator(backoff_factor=backoff_factor)
-        self._session_params.backoff_factor = validated_field.backoff_factor
-        for mounted_adapter in self.http.adapters:
-            self.http.get_adapter(mounted_adapter)\
-                .max_retries.backoff_factor = self._session_params.backoff_factor
+        try:
+            self._session_params.backoff_factor = backoff_factor
+            for mounted_adapter in self.http.adapters:
+                self.http.get_adapter(mounted_adapter)\
+                    .max_retries.backoff_factor = self._session_params.backoff_factor
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def retry_status_code_list(self):
@@ -297,7 +302,10 @@ class RestSession:
         return self._session_params.retry_status_code_list
 
     @retry_status_code_list.setter
-    def retry_status_code_list(self, retry_status_code_list):
+    def retry_status_code_list(self,
+                               retry_status_code_list: list[
+                                   conint(strict=True, ge=300, le=599)
+                               ] = SESSION_DEFAULTS["retry_status_codes"]) -> None:
         """
         Change the list of status codes that result in a retry when received.
 
@@ -307,13 +315,13 @@ class RestSession:
         :param retry_status_code_list: List of HTTP status codes to retry
         :return: None
         """
-        validated_field = RetryStatusCodeListValidator(
-            retry_status_code_list=retry_status_code_list
-        )
-        self._session_params.retry_status_code_list = validated_field.retry_status_code_list
-        for mounted_adapter in self.http.adapters:
-            self.http.get_adapter(mounted_adapter)\
-                .max_retries.status_forcelist = self._session_params.retry_status_code_list
+        try:
+            self._session_params.retry_status_code_list = retry_status_code_list
+            for mounted_adapter in self.http.adapters:
+                self.http.get_adapter(mounted_adapter)\
+                    .max_retries.status_forcelist = self._session_params.retry_status_code_list
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def retry_method_list(self):
@@ -338,11 +346,13 @@ class RestSession:
         :param retry_method_list: List of HTTP methods to retry
         :return: None
         """
-        validated_field = RetryMethodListValidator(retry_method_list=retry_method_list)
-        self._session_params.retry_method_list = validated_field.retry_method_list
-        for mounted_adapter in self.http.adapters:
-            self.http.get_adapter(mounted_adapter)\
-                .max_retries.allowed_methods = self._session_params.retry_method_list
+        try:
+            self._session_params.retry_method_list = retry_method_list
+            for mounted_adapter in self.http.adapters:
+                self.http.get_adapter(mounted_adapter)\
+                    .max_retries.allowed_methods = self._session_params.retry_method_list
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def respect_retry_headers(self):
@@ -366,11 +376,13 @@ class RestSession:
         :param respect_retry_headers: True to respect, False to ignore
         :return: None
         """
-        validated_field = RespectRetryHeadersValidator(respect_retry_headers=respect_retry_headers)
-        self._session_params.respect_retry_headers = validated_field.respect_retry_headers
-        for mounted_adapter in self.http.adapters:
-            self.http.get_adapter(mounted_adapter)\
-                .max_retries.respect_retry_after_header = self._session_params.respect_retry_headers
+        try:
+            self._session_params.respect_retry_headers = respect_retry_headers
+            for mounted_adapter in self.http.adapters:
+                self.http.get_adapter(mounted_adapter)\
+                    .max_retries.respect_retry_after_header = self._session_params.respect_retry_headers
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def base_url(self):
@@ -397,9 +409,11 @@ class RestSession:
         :param base_url: Base URL for requests using this instance
         :return: None
         """
-        validated_field = BaseUrlValidator(base_url=base_url)
-        self._session_params.base_url = validated_field.base_url
-        self.http.base_url = self._session_params.base_url
+        try:
+            self._session_params.base_url = base_url
+            self.http.base_url = self._session_params.base_url
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def tls_verify(self):
@@ -420,11 +434,13 @@ class RestSession:
             Setting this to False disable TLS validation.
         :return: None
         """
-        validated_field = TlsVerifyValidator(tls_verify=tls_verify)
-        self._session_params.tls_verify = validated_field.tls_verify
-        if self._session_params.tls_verify is False:
-            disable_warnings()
-        self.http.verify = self._session_params.tls_verify
+        try:
+            self._session_params.tls_verify = tls_verify
+            if self._session_params.tls_verify is False:
+                disable_warnings()
+            self.http.verify = self._session_params.tls_verify
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def username(self):
@@ -445,9 +461,11 @@ class RestSession:
         :param username: Username for HTTP Basic Auth
         :return: None
         """
-        validated_field = UsernameValidator(username=username)
-        self._session_params.username = validated_field.username
-        self.update_basic_auth()
+        try:
+            self._session_params.username = username
+            self.update_basic_auth()
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def password(self):
@@ -467,9 +485,11 @@ class RestSession:
         :param password: Password for HTTP Basic Auth
         :return: None
         """
-        validated_field = PasswordValidator(password=password)
-        self._session_params.password = validated_field.password
-        self.update_basic_auth()
+        try:
+            self._session_params.password = password
+            self.update_basic_auth()
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def auth(self):
@@ -494,13 +514,15 @@ class RestSession:
         :return: None
         """
         # pylint: disable=unsubscriptable-object
+        try:
+            self._session_params.auth = auth_method
 
-        validated_field = AuthValidator(auth=auth_method)
-        if isinstance(validated_field.auth, tuple):
-            self._session_params.username = validated_field.auth[0]
-            self._session_params.password = validated_field.auth[1]
-        self._session_params.auth = validated_field.auth
-        self.http.auth = self._session_params.auth
+            if isinstance(auth_method, tuple):
+                self.username = auth_method[0]
+                self.password = auth_method[1]
+            self.http.auth = self._session_params.auth
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def headers(self):
@@ -521,8 +543,11 @@ class RestSession:
         :param headers: Dictionary of additional headers for the session.
         :return: None
         """
-        self._session_params.headers = headers
-        self.http.headers = self._session_params.headers
+        try:
+            self._session_params.headers = headers
+            self.http.headers = self._session_params.headers
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def auth_headers(self):
@@ -544,10 +569,13 @@ class RestSession:
         :param headers: Dictionary of custom auth headers for the session
         :return: None
         """
-        self._session_params.auth_headers = headers
-        self.http.headers = self._session_params.auth_headers
+        try:
+            self._session_params.auth_headers = headers
+            self.http.headers = self._session_params.auth_headers
 
-        self.redirect_header_hook = remove_custom_auth_header_on_redirect(headers=headers.keys())
+            self.redirect_header_hook = remove_custom_auth_header_on_redirect(headers=headers.keys())
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     def reauth(self):
         """
@@ -558,13 +586,27 @@ class RestSession:
         :return: None
         :raises: RequestHTTPError if max auth count reached
         """
-        if hasattr(self.auth, "reauth"):
-            if self.reauth_count >= self.max_reauth:
-                raise RequestHTTPError(
-                    f"Maximum reauthentication count reached ({self.reauth_count})"
-                )
-            self.reauth_count += 1
-            self.auth.reauth()
+        try:
+            if hasattr(self.auth, "reauth"):
+                if self.reauth_count >= self.max_reauth:
+                    raise RequestHTTPError(
+                        f"Maximum reauthentication count reached ({self.reauth_count})"
+                    )
+                self.reauth_count += 1
+                self.auth.reauth()
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
+
+    @property
+    def max_reauth(self):
+        return self._session_params.max_reauth
+
+    @max_reauth.setter
+    def max_reauth(self, max_reauth):
+        try:
+            self._session_params.max_reauth = max_reauth
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def redirect_header_hook(self):
@@ -587,12 +629,15 @@ class RestSession:
         :param headers: Function reference to become the redirect handler
         :return: None
         """
-        if not isinstance(hook, list):
-            hook = [hook]
-        self._session_params.redirect_header_hook = hook
-        self.http.hooks["response"] = self.redirect_header_hook + \
-                                      self.response_hooks + \
-                                      self.request_exception_hook
+        try:
+            if not isinstance(hook, list):
+                hook = [hook]
+            self._session_params.redirect_header_hook = hook
+            self.http.hooks["response"] = self.redirect_header_hook + \
+                                          self.response_hooks + \
+                                          self.request_exception_hook
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def request_exception_hook(self):
@@ -618,12 +663,15 @@ class RestSession:
         :param headers: Function reference to become the exception handler hook
         :return: None
         """
-        if not isinstance(hook, list):
-            hook = [hook]
-        self._session_params.request_exception_hook = hook
-        self.http.hooks["response"] = self.redirect_header_hook + \
-                                      self.response_hooks + \
-                                      self.request_exception_hook
+        try:
+            if not isinstance(hook, list):
+                hook = [hook]
+            self._session_params.request_exception_hook = hook
+            self.http.hooks["response"] = self.redirect_header_hook + \
+                                          self.response_hooks + \
+                                          self.request_exception_hook
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def response_hooks(self):
@@ -649,13 +697,16 @@ class RestSession:
         :param headers: Function(s) to call after a response is received.
         :return: None
         """
-        if not isinstance(hooks, list):
-            hooks = [hooks]
+        try:
+            if not isinstance(hooks, list):
+                hooks = [hooks]
 
-        self._session_params.response_hooks = self._session_params.response_hooks + hooks
-        self.http.hooks["response"] = self.redirect_header_hook + \
-                                      self.response_hooks + \
-                                      self.request_exception_hook
+            self._session_params.response_hooks = self._session_params.response_hooks + hooks
+            self.http.hooks["response"] = self.redirect_header_hook + \
+                                          self.response_hooks + \
+                                          self.request_exception_hook
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     def clear_response_hooks(self):
         """
@@ -693,7 +744,7 @@ class RestSession:
         :param kwargs: Optional arguments for requests.request
         :return: :class:`Response <Response>` object
         """
-        return self.http.request("get", url, params=params, **kwargs)
+        return self.request("get", url, params=params, **kwargs)
 
     def options(self, url, **kwargs):
         """
@@ -703,7 +754,7 @@ class RestSession:
         :param kwargs: Optional arguments for requests.request
         :return: :class:`Response <Response>` object
         """
-        return self.http.request("options", url, **kwargs)
+        return self.request("options", url, **kwargs)
 
     def head(self, url, **kwargs):
         """
@@ -714,7 +765,7 @@ class RestSession:
         :return: :class:`Response <Response>` object
         """
         kwargs.setdefault("allow_redirects", False)
-        return self.http.request("head", url, **kwargs)
+        return self.request("head", url, **kwargs)
 
     def post(self, url, data=None, json=None, **kwargs):
         """
@@ -726,7 +777,7 @@ class RestSession:
         :param kwargs: Optional arguments for requests.request
         :return: :class:`Response <Response>` object
         """
-        return self.http.request("post", url, data=data, json=json, **kwargs)
+        return self.request("post", url, data=data, json=json, **kwargs)
 
     def put(self, url, data=None, json=None, **kwargs):
         """
@@ -738,7 +789,7 @@ class RestSession:
         :param kwargs: Optional arguments for requests.request
         :return: :class:`Response <Response>` object
         """
-        return self.http.request("put", url, data=data, json=json, **kwargs)
+        return self.request("put", url, data=data, json=json, **kwargs)
 
     def patch(self, url, data=None, json=None, **kwargs):
         """
@@ -750,7 +801,7 @@ class RestSession:
         :param kwargs: Optional arguments for requests.request
         :return: :class:`Response <Response>` object
         """
-        return self.http.request("patch", url, data=data, json=json, **kwargs)
+        return self.request("patch", url, data=data, json=json, **kwargs)
 
     def delete(self, url, **kwargs):
         """
@@ -760,4 +811,4 @@ class RestSession:
         :param kwargs: Optional arguments for requests.request
         :return: :class:`Response <Response>` object
         """
-        return self.http.request("delete", url, **kwargs)
+        return self.request("delete", url, **kwargs)

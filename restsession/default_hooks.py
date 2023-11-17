@@ -1,3 +1,7 @@
+"""
+Default hooks for response handling. These are separated from the main module
+to improve readability of it as well as the hook definitions.
+"""
 import logging
 from typing import Optional
 from urllib.parse import urlparse
@@ -8,7 +12,10 @@ from requests.exceptions import (HTTPError as RequestHTTPError,
                                  MissingSchema as RequestMissingSchema,
                                  RetryError as RequestRetryError,
                                  TooManyRedirects as RequestTooManyRedirects,
+                                 SSLError as RequestSslError,
                                  RequestException)
+from urllib3.exceptions import (MaxRetryError, SSLError as UrllibSslError)
+from ssl import SSLError
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +41,10 @@ def default_request_exception_hook(response, **kwargs):  # pylint: disable=unuse
         raise RequestTooManyRedirects(err) from err
     except RequestRetryError as err:
         logger.error("Request retry handler error was encountered: %s", err)
-        # raise RequestRetryError(err) from err
-        raise RequestTooManyRedirects(err) from err
+        raise RequestRetryError(err) from err
+    except (RequestSslError, SSLError, UrllibSslError, MaxRetryError) as err:
+        logger.error("TLS error encountered during request: %s", err)
+        raise RequestSslError(err) from err
     except RequestTimeout as err:
         logger.error("The HTTP request timed out: %s", err)
         raise RequestTimeout(err) from err

@@ -13,7 +13,8 @@ parameters:
       - list_element1
       - list_element2
     retry_method_list: False
-    base_url: 33.333
+#    base_url: 33.333
+    base_url: localstuff
     tls_verify: 99
     username: False
     password: True

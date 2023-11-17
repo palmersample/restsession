@@ -1,6 +1,6 @@
-pydantic ~= 1.10.9
+pydantic ~= 2.1.1
 requests ~= 2.31.0
 requests_toolbelt ~= 1.0.0
 # responses ~= 0.22.0
 urllib3 ~= 2.0.3
-pyats[full] ~= 23.5
+pyats[full] ~= 23.10

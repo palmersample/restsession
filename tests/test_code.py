@@ -1,6 +1,7 @@
 import logging
 from pyats import aetest
 from pydantic import ValidationError
+from restsession.exceptions import (InvalidParameterError, InitializationError)
 import sys
 from pathlib import Path
 
@@ -96,8 +97,10 @@ class TestObjectParameters(aetest.Testcase):
             logger.info("Retrieved object parameters:\n%s", non_hook_params)
 
             assert non_hook_params == default_parameters, "Defaults not set"
+        except (InitializationError, InvalidParameterError):
+            self.failed("Exception caught on expected valid input")
         except ValidationError:
-            self.failed("ValidationError caught on expected valid input")
+            self.failed("Pydantic ValidationError caught on valid input")
         else:
             self.passed("Params retrieves")
 
@@ -117,8 +120,10 @@ class TestObjectParameters(aetest.Testcase):
 
             assert non_hook_params == custom_parameters, "Custom params not set"
             logger.info("URL is: %s", test_result._session_params.base_url)
+        except (InitializationError, InvalidParameterError):
+            self.failed("Exception caught on expected valid input")
         except ValidationError:
-            self.failed("ValidationError caught on expected valid input")
+            self.failed("Pydantic ValidationError caught on valid input")
         else:
             # self.passed(f"Params retrieves")
             if "Singleton" in str(test_class):
@@ -144,16 +149,20 @@ class TestObjectParameters(aetest.Testcase):
         try:
             logger.info("Calling test class '%s' with parameters:\n%s", str(test_class), invalid_parameters)
             test_result = test_class(**invalid_parameters)
-            object_parameters = test_result._session_params.dict()
-            non_hook_params = {k: v for k, v in object_parameters.items() if k in default_parameters}
-            logger.info("Expecting parameters:\n%s", default_parameters)
-            logger.info("Retrieved object parameters:\n%s", non_hook_params)
-
-            assert non_hook_params == default_parameters, "Defaults not set"
-        except ValidationError:
-            self.failed("ValidationError caught on expected valid input")
+            # object_parameters = test_result._session_params.dict()
+            # non_hook_params = {k: v for k, v in object_parameters.items() if k in default_parameters}
+            # logger.info("Expecting parameters:\n%s", default_parameters)
+            # logger.info("Retrieved object parameters:\n%s", non_hook_params)
+            #
+            # assert non_hook_params == default_parameters, "Defaults not set"
+        except (InitializationError, InvalidParameterError) as err:
+            self.passed(f"Exception caught on expected valid input:\n{err}")
+        # except ValidationError:
+        #     self.passed("Pydantic ValidationError caught on valid input")
+        # except Exception as err:
+        #     self.passed(f"Exception was raised when invalid parameters were passed:\n{err}")
         else:
-            self.passed("Params retrieves")
+            self.failed("Bad parameters did NOT generate an exception!")
 
 
 class TestObjectAttributes(aetest.Testcase):
