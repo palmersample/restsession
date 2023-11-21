@@ -5,7 +5,7 @@ parameters:
     timeout: This is a string value
     retries:
       dict_key: dict_value
-    max_redirect:
+    max_redirects:
       - list_element1
       - list_element2
     backoff_factor: True
@@ -22,7 +22,7 @@ parameters:
   default_parameters:
     timeout: 5
     retries: 3
-    max_redirect: 16
+    max_redirects: 16
     backoff_factor: 0.3
     retry_status_code_list:
       - 408
@@ -50,7 +50,7 @@ parameters:
   custom_parameters:
     timeout: 10
     retries: 2
-    max_redirect: 3
+    max_redirects: 3
     backoff_factor: 0.7
     retry_status_code_list:
       - 429

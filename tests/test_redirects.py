@@ -47,7 +47,7 @@ class TestRequestRedirects(BaseHttpServer):
         if hasattr(test_class, "_instances"):
             test_class._instances = {}
 
-        test_instance = test_class(max_redirect=request_redirect_count)
+        test_instance = test_class(max_redirects=request_redirect_count)
 
         try:
             test_instance.get(test_url)
@@ -101,7 +101,7 @@ class TestRequestRedirects(BaseHttpServer):
         if hasattr(test_class, "_instances"):
             test_class._instances = {}
 
-        test_instance = test_class(max_redirect=request_redirect_count)
+        test_instance = test_class(max_redirects=request_redirect_count)
 
         try:
             test_instance.get(test_url)

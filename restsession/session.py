@@ -9,6 +9,7 @@ parameter is supplied.
 import logging
 from typing import Any, Optional, Union, Callable
 from types import MappingProxyType
+from copy import deepcopy
 
 import requests.exceptions
 import urllib3.exceptions
@@ -17,12 +18,12 @@ from pydantic import (ValidationError, validate_call, StrictInt, StrictFloat, St
 from requests.exceptions import (HTTPError as RequestHTTPError)
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
-from requests_toolbelt import sessions
+from requests_toolbelt.sessions import BaseUrlSession
 from urllib3 import disable_warnings
 from urllib3.util.retry import Retry
 from .defaults import SESSION_DEFAULTS
 from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
-from .newmodels import SessionParamModel, HttpSessionArguments
+from .newmodels import SessionParamModel, HttpSessionArguments, SessionParameters
 from .exceptions import (InvalidParameterError, InitializationError)
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class TimeoutHTTPAdapter(HTTPAdapter):
         return super().send(request, **kwargs)
 
 
-class RestSession:
+class RestSession(BaseUrlSession):
     """
     Main HTTP Session class. On init, create a new HTTP base URL session for the
     object, generate all needed settings for timeout/retries and configure
@@ -75,8 +76,8 @@ class RestSession:
                  username: str = SESSION_DEFAULTS["username"],
                  password: str = SESSION_DEFAULTS["password"],
                  auth: Optional[Union[tuple, AuthBase]] = None,
-                 max_reauth: int = SESSION_DEFAULTS["max_reauth"],
-                 **kwargs: Any
+                 max_reauth: int = SESSION_DEFAULTS["max_reauth"]  # ,
+                 # **kwargs: Any
                  ) -> None:
         """
         Initialize the object. All provided parameters will be passed through
@@ -97,70 +98,84 @@ class RestSession:
         :param auth: (tuple | AuthBase) If a username/password tuple or an AuthBase instance
             is provided, set the session auth
         """
-        self.http = sessions.BaseUrlSession()
-        self._session_params = HttpSessionArguments(**kwargs)
-
-        for param_name, param_val in locals().items():
-            # if param_val is not None and hasattr(self._session_params, param_name):
-            if param_val is not None and hasattr(self, param_name):
-                try:
-                    # setattr(self._session_params, param_name, param_val)
-                    setattr(self, param_name, param_val)
-                except InvalidParameterError as err:
-                    raise InitializationError(err) from err
-
-        self.http.base_url = self._session_params.base_url
-        self.http.timeout = self._session_params.timeout
-        self.http.max_redirects = self._session_params.max_redirect
-        self.http.verify = self._session_params.tls_verify
-
-        if not self.tls_verify:
-            disable_warnings()
-
-        # requests handles the redirects, so only apply parameters related to
-        # retries with this handler.
-        default_retry_strategy = Retry(
-            total=self._session_params.retries,
-            other=0,
-            redirect=False,
-            backoff_factor=self._session_params.backoff_factor,
-            status_forcelist=self._session_params.retry_status_code_list,
-            allowed_methods=self._session_params.retry_method_list,
-            respect_retry_after_header=self._session_params.respect_retry_headers,
-            raise_on_status=True
-        )
-        # Mount http/https to the request session and attach the timeout
-        # adapter with defined retry strategy
-        self.http.mount("https://", TimeoutHTTPAdapter(timeout=self._session_params.timeout,
-                                                       max_retries=default_retry_strategy))
-
-        self.http.mount("http://", TimeoutHTTPAdapter(timeout=self._session_params.timeout,
-                                                      max_retries=default_retry_strategy))
-
-        # Is username/password provided, use basic auth. Otherwise, if an auth
-        # parameter was passed, initialize the session auth object
-        if self._session_params.username and self._session_params.password:
-            self.http.auth = (self._session_params.username, self._session_params.password)
-        elif self._session_params.auth:
-            self.http.auth = self._session_params.auth
-
-        self.reauth_count = 0
-
-        # Assign the response hooks to the session. This should always be:
-        #  0: redirect_header_hook (remove auth headers on redirect)
-        #  1-x: custom_hooks
-        #  Last: request_exception_hook (raise for status and catch exceptions)
-        self.redirect_header_hook = remove_custom_auth_header_on_redirect(
-            headers=auth_headers.keys()
-        )
-        self.request_exception_hook = default_request_exception_hook
+        # init_args = {k: v for k,v in locals().items() if k != "self"}
+        # logger.error("\n\nLOCALS:\n%s\n\n", init_args)
+        # self._session_params = dict()
+        self._session_params = HttpSessionArguments()
+        self.base_url = base_url
+        # if not hasattr(self, "_session_params"):
+        #     try:
+        #         self._session_params = HttpSessionArguments(**locals())
+        #     except ValidationError as err:
+        #         raise InitializationError(err) from err
+        #
+        # # self.http = sessions.BaseUrlSession()
+        #
+        # # self._session_params = HttpSessionArguments.model_validate(init_args)
+        # # self._session_params = HttpSessionArguments.model_validate(locals())
+        # # self._session_params = HttpSessionArguments()
+        #
+        # # for param_name, param_val in locals().items():
+        # #     # if param_val is not None and hasattr(self._session_params, param_name):
+        # #     if param_val is not None and hasattr(self, param_name):
+        # #         try:
+        # #             # setattr(self._session_params, param_name, param_val)
+        # #             setattr(self, param_name, param_val)
+        # #         except InvalidParameterError as err:
+        # #             raise InitializationError(err) from err
+        #
+        # self.base_url = self._session_params.base_url
+        # self.timeout = self._session_params.timeout
+        # self.max_redirects = self._session_params.max_redirect
+        # self.verify = self._session_params.tls_verify
+        #
+        # if not self.tls_verify:
+        #     disable_warnings()
+        #
+        # # requests handles the redirects, so only apply parameters related to
+        # # retries with this handler.
+        # default_retry_strategy = Retry(
+        #     total=self._session_params.retries,
+        #     other=0,
+        #     redirect=False,
+        #     backoff_factor=self._session_params.backoff_factor,
+        #     status_forcelist=self._session_params.retry_status_code_list,
+        #     allowed_methods=self._session_params.retry_method_list,
+        #     respect_retry_after_header=self._session_params.respect_retry_headers,
+        #     raise_on_status=True
+        # )
+        # # Mount http/https to the request session and attach the timeout
+        # # adapter with defined retry strategy
+        # self.mount("https://", TimeoutHTTPAdapter(timeout=self._session_params.timeout,
+        #                                                max_retries=default_retry_strategy))
+        #
+        # self.mount("http://", TimeoutHTTPAdapter(timeout=self._session_params.timeout,
+        #                                               max_retries=default_retry_strategy))
+        #
+        # # Is username/password provided, use basic auth. Otherwise, if an auth
+        # # parameter was passed, initialize the session auth object
+        # if self._session_params.username and self._session_params.password:
+        #     self.auth = (self._session_params.username, self._session_params.password)
+        # elif self._session_params.auth:
+        #     self.auth = self._session_params.auth
+        #
+        # self.reauth_count = 0
+        #
+        # # Assign the response hooks to the session. This should always be:
+        # #  0: redirect_header_hook (remove auth headers on redirect)
+        # #  1-x: custom_hooks
+        # #  Last: request_exception_hook (raise for status and catch exceptions)
+        # self.redirect_header_hook = remove_custom_auth_header_on_redirect(
+        #     headers=auth_headers.keys()
+        # )
+        # self.request_exception_hook = default_request_exception_hook
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Cleanup - terminate the request session
-        self.http.close()
+        self.close()
 
     def update_basic_auth(self):
         """
@@ -198,8 +213,8 @@ class RestSession:
         """
         try:
             self._session_params.timeout = timeout
-            for mounted_adapter in self.http.adapters:
-                self.http.get_adapter(mounted_adapter)\
+            for mounted_adapter in self.adapters:
+                self.get_adapter(mounted_adapter)\
                     .timeout = self._session_params.timeout
         except ValidationError as err:
             raise InvalidParameterError(err) from err
@@ -226,8 +241,8 @@ class RestSession:
         """
         try:
             self._session_params.retries = retries
-            for mounted_adapter in self.http.adapters:
-                self.http.get_adapter(mounted_adapter)\
+            for mounted_adapter in self.adapters:
+                self.get_adapter(mounted_adapter)\
                     .max_retries.total = self._session_params.retries
         except ValidationError as err:
             raise InvalidParameterError(err) from err
@@ -254,8 +269,8 @@ class RestSession:
         """
         try:
             self._session_params.max_redirect = max_redirect
-            for mounted_adapter in self.http.adapters:
-                self.http.get_adapter(mounted_adapter)\
+            for mounted_adapter in self.adapters:
+                self.get_adapter(mounted_adapter)\
                     .max_retries.redirect = self._session_params.max_redirect
         except ValidationError as err:
             raise InvalidParameterError(err) from err
@@ -286,8 +301,8 @@ class RestSession:
         """
         try:
             self._session_params.backoff_factor = backoff_factor
-            for mounted_adapter in self.http.adapters:
-                self.http.get_adapter(mounted_adapter)\
+            for mounted_adapter in self.adapters:
+                self.get_adapter(mounted_adapter)\
                     .max_retries.backoff_factor = self._session_params.backoff_factor
         except ValidationError as err:
             raise InvalidParameterError(err) from err
@@ -317,8 +332,8 @@ class RestSession:
         """
         try:
             self._session_params.retry_status_code_list = retry_status_code_list
-            for mounted_adapter in self.http.adapters:
-                self.http.get_adapter(mounted_adapter)\
+            for mounted_adapter in self.adapters:
+                self.get_adapter(mounted_adapter)\
                     .max_retries.status_forcelist = self._session_params.retry_status_code_list
         except ValidationError as err:
             raise InvalidParameterError(err) from err
@@ -348,8 +363,8 @@ class RestSession:
         """
         try:
             self._session_params.retry_method_list = retry_method_list
-            for mounted_adapter in self.http.adapters:
-                self.http.get_adapter(mounted_adapter)\
+            for mounted_adapter in self.adapters:
+                self.get_adapter(mounted_adapter)\
                     .max_retries.allowed_methods = self._session_params.retry_method_list
         except ValidationError as err:
             raise InvalidParameterError(err) from err
@@ -378,8 +393,8 @@ class RestSession:
         """
         try:
             self._session_params.respect_retry_headers = respect_retry_headers
-            for mounted_adapter in self.http.adapters:
-                self.http.get_adapter(mounted_adapter)\
+            for mounted_adapter in self.adapters:
+                self.get_adapter(mounted_adapter)\
                     .max_retries.respect_retry_after_header = self._session_params.respect_retry_headers
         except ValidationError as err:
             raise InvalidParameterError(err) from err
@@ -411,7 +426,7 @@ class RestSession:
         """
         try:
             self._session_params.base_url = base_url
-            self.http.base_url = self._session_params.base_url
+            self.base_url = self._session_params.base_url
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -438,7 +453,7 @@ class RestSession:
             self._session_params.tls_verify = tls_verify
             if self._session_params.tls_verify is False:
                 disable_warnings()
-            self.http.verify = self._session_params.tls_verify
+            self.verify = self._session_params.tls_verify
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -520,7 +535,7 @@ class RestSession:
             if isinstance(auth_method, tuple):
                 self.username = auth_method[0]
                 self.password = auth_method[1]
-            self.http.auth = self._session_params.auth
+            self.auth = self._session_params.auth
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -545,7 +560,7 @@ class RestSession:
         """
         try:
             self._session_params.headers = headers
-            self.http.headers = self._session_params.headers
+            self.headers = self._session_params.headers
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -571,7 +586,7 @@ class RestSession:
         """
         try:
             self._session_params.auth_headers = headers
-            self.http.headers = self._session_params.auth_headers
+            self.headers = self._session_params.auth_headers
 
             self.redirect_header_hook = remove_custom_auth_header_on_redirect(headers=headers.keys())
         except ValidationError as err:
@@ -633,7 +648,7 @@ class RestSession:
             if not isinstance(hook, list):
                 hook = [hook]
             self._session_params.redirect_header_hook = hook
-            self.http.hooks["response"] = self.redirect_header_hook + \
+            self.hooks["response"] = self.redirect_header_hook + \
                                           self.response_hooks + \
                                           self.request_exception_hook
         except ValidationError as err:
@@ -667,7 +682,7 @@ class RestSession:
             if not isinstance(hook, list):
                 hook = [hook]
             self._session_params.request_exception_hook = hook
-            self.http.hooks["response"] = self.redirect_header_hook + \
+            self.hooks["response"] = self.redirect_header_hook + \
                                           self.response_hooks + \
                                           self.request_exception_hook
         except ValidationError as err:
@@ -702,7 +717,7 @@ class RestSession:
                 hooks = [hooks]
 
             self._session_params.response_hooks = self._session_params.response_hooks + hooks
-            self.http.hooks["response"] = self.redirect_header_hook + \
+            self.hooks["response"] = self.redirect_header_hook + \
                                           self.response_hooks + \
                                           self.request_exception_hook
         except ValidationError as err:
@@ -715,100 +730,103 @@ class RestSession:
         :return: None
         """
         self._session_params.response_hooks = []
-        self.http.hooks["response"] = []
+        self.hooks["response"] = []
 
-    def request(self, method, url, **kwargs):
-        """
-        Send a generic HTTP request. See the Python "requests" library for
-        detailed parameters available for any HTTP Request. "Standard" methods
-        i.e. GET, POST, etc. are wrappers for this method, which itself is a
-        wrapper for the requests library's "request" function.
 
-        :param method: HTTP Method for the request
-        :param url: Absolute or relative URL (BaseURL sessions only) for the
-            request.
-        :param kwargs: Additional parameters to pass to requests.request
-        :return: :class:`Response <Response>` object
-        """
-        if "timeout" in kwargs:
-            del kwargs["timeout"]
 
-        return self.http.request(method, url, timeout=self.timeout, **kwargs)
 
-    def get(self, url, params=None, **kwargs):
-        """
-        Send an HTTP GET request
-
-        :param url: Absolute or relative URL for the request
-        :param params: Optional parameters to include in the request string.
-        :param kwargs: Optional arguments for requests.request
-        :return: :class:`Response <Response>` object
-        """
-        return self.request("get", url, params=params, **kwargs)
-
-    def options(self, url, **kwargs):
-        """
-        Send an HTTP OPTIONS request
-
-        :param url: Absolute or relative URL for the request
-        :param kwargs: Optional arguments for requests.request
-        :return: :class:`Response <Response>` object
-        """
-        return self.request("options", url, **kwargs)
-
-    def head(self, url, **kwargs):
-        """
-        Send an HTTP HEAD request
-
-        :param url: Absolute or relative URL for the request
-        :param kwargs: Optional arguments for requests.request
-        :return: :class:`Response <Response>` object
-        """
-        kwargs.setdefault("allow_redirects", False)
-        return self.request("head", url, **kwargs)
-
-    def post(self, url, data=None, json=None, **kwargs):
-        """
-        Send an HTTP POST request
-
-        :param url: Absolute or relative URL for the request
-        :param data: Raw data (e.g. Dict, list, etc.) to send in the POST body
-        :param json: JSON-compatible Python object to serialize for the body
-        :param kwargs: Optional arguments for requests.request
-        :return: :class:`Response <Response>` object
-        """
-        return self.request("post", url, data=data, json=json, **kwargs)
-
-    def put(self, url, data=None, json=None, **kwargs):
-        """
-        Send an HTTP PUT request
-
-        :param url: Absolute or relative URL for the request
-        :param data: Raw data (e.g. Dict, list, etc.) to send in the POST body
-        :param json: JSON-compatible Python object to serialize for the body
-        :param kwargs: Optional arguments for requests.request
-        :return: :class:`Response <Response>` object
-        """
-        return self.request("put", url, data=data, json=json, **kwargs)
-
-    def patch(self, url, data=None, json=None, **kwargs):
-        """
-        Send an HTTP PATCH request
-
-        :param url: Absolute or relative URL for the request
-        :param data: Raw data (e.g. Dict, list, etc.) to send in the POST body
-        :param json: JSON-compatible Python object to serialize for the body
-        :param kwargs: Optional arguments for requests.request
-        :return: :class:`Response <Response>` object
-        """
-        return self.request("patch", url, data=data, json=json, **kwargs)
-
-    def delete(self, url, **kwargs):
-        """
-        Send an HTTP DELETE request
-
-        :param url: Absolute or relative URL for the request
-        :param kwargs: Optional arguments for requests.request
-        :return: :class:`Response <Response>` object
-        """
-        return self.request("delete", url, **kwargs)
+    # def request(self, method, url, **kwargs):
+    #     """
+    #     Send a generic HTTP request. See the Python "requests" library for
+    #     detailed parameters available for any HTTP Request. "Standard" methods
+    #     i.e. GET, POST, etc. are wrappers for this method, which itself is a
+    #     wrapper for the requests library's "request" function.
+    #
+    #     :param method: HTTP Method for the request
+    #     :param url: Absolute or relative URL (BaseURL sessions only) for the
+    #         request.
+    #     :param kwargs: Additional parameters to pass to requests.request
+    #     :return: :class:`Response <Response>` object
+    #     """
+    #     if "timeout" in kwargs:
+    #         del kwargs["timeout"]
+    #
+    #     return self.request(method, url, timeout=self.timeout, **kwargs)
+    #
+    # def get(self, url, params=None, **kwargs):
+    #     """
+    #     Send an HTTP GET request
+    #
+    #     :param url: Absolute or relative URL for the request
+    #     :param params: Optional parameters to include in the request string.
+    #     :param kwargs: Optional arguments for requests.request
+    #     :return: :class:`Response <Response>` object
+    #     """
+    #     return self.request("get", url, params=params, **kwargs)
+    #
+    # def options(self, url, **kwargs):
+    #     """
+    #     Send an HTTP OPTIONS request
+    #
+    #     :param url: Absolute or relative URL for the request
+    #     :param kwargs: Optional arguments for requests.request
+    #     :return: :class:`Response <Response>` object
+    #     """
+    #     return self.request("options", url, **kwargs)
+    #
+    # def head(self, url, **kwargs):
+    #     """
+    #     Send an HTTP HEAD request
+    #
+    #     :param url: Absolute or relative URL for the request
+    #     :param kwargs: Optional arguments for requests.request
+    #     :return: :class:`Response <Response>` object
+    #     """
+    #     kwargs.setdefault("allow_redirects", False)
+    #     return self.request("head", url, **kwargs)
+    #
+    # def post(self, url, data=None, json=None, **kwargs):
+    #     """
+    #     Send an HTTP POST request
+    #
+    #     :param url: Absolute or relative URL for the request
+    #     :param data: Raw data (e.g. Dict, list, etc.) to send in the POST body
+    #     :param json: JSON-compatible Python object to serialize for the body
+    #     :param kwargs: Optional arguments for requests.request
+    #     :return: :class:`Response <Response>` object
+    #     """
+    #     return self.request("post", url, data=data, json=json, **kwargs)
+    #
+    # def put(self, url, data=None, json=None, **kwargs):
+    #     """
+    #     Send an HTTP PUT request
+    #
+    #     :param url: Absolute or relative URL for the request
+    #     :param data: Raw data (e.g. Dict, list, etc.) to send in the POST body
+    #     :param json: JSON-compatible Python object to serialize for the body
+    #     :param kwargs: Optional arguments for requests.request
+    #     :return: :class:`Response <Response>` object
+    #     """
+    #     return self.request("put", url, data=data, json=json, **kwargs)
+    #
+    # def patch(self, url, data=None, json=None, **kwargs):
+    #     """
+    #     Send an HTTP PATCH request
+    #
+    #     :param url: Absolute or relative URL for the request
+    #     :param data: Raw data (e.g. Dict, list, etc.) to send in the POST body
+    #     :param json: JSON-compatible Python object to serialize for the body
+    #     :param kwargs: Optional arguments for requests.request
+    #     :return: :class:`Response <Response>` object
+    #     """
+    #     return self.request("patch", url, data=data, json=json, **kwargs)
+    #
+    # def delete(self, url, **kwargs):
+    #     """
+    #     Send an HTTP DELETE request
+    #
+    #     :param url: Absolute or relative URL for the request
+    #     :param kwargs: Optional arguments for requests.request
+    #     :return: :class:`Response <Response>` object
+    #     """
+    #     return self.request("delete", url, **kwargs)

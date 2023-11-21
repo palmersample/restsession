@@ -75,8 +75,10 @@ class TestRequestAuthorization(BaseHttpServer):
         if hasattr(test_class, "_instances"):
             test_class._instances = {}
 
-        test_instance = test_class(username=basic_auth_username,
-                                   password=basic_auth_password)
+        # test_instance = test_class(username=basic_auth_username,
+        #                            password=basic_auth_password)
+
+        test_instance = test_class(auth=(basic_auth_username, basic_auth_password))
 
         try:
             test_instance.get(test_url)
@@ -127,6 +129,7 @@ class TestRequestAuthorization(BaseHttpServer):
         test_instance = test_class()
         test_instance.auth = (basic_auth_username, basic_auth_password)
 
+        logger.error("AUTH INSTANCE FOR OBJECT: %s", test_instance.auth)
         try:
             test_instance.get(test_url)
         except Exception as err:
@@ -134,7 +137,7 @@ class TestRequestAuthorization(BaseHttpServer):
         finally:
             self.stop_mock_server(test_server)
 
-        assert test_instance.username == basic_auth_username, \
+        assert test_instance.auth[0] == basic_auth_username, \
             "Username attribute does not match auth tuple." \
             f"Expected: '{basic_auth_username}', configured is '{test_instance.username}"
         assert test_instance.password == basic_auth_password, \
@@ -250,8 +253,10 @@ class TestRequestAuthorization(BaseHttpServer):
         if hasattr(test_class, "_instances"):
             test_class._instances = {}
 
-        test_instance = test_class(base_url=base_url, username=basic_auth_username, password=basic_auth_password)
+        # test_instance = test_class(base_url=base_url, username=basic_auth_username, password=basic_auth_password)
+        test_instance = test_class(base_url=base_url, auth=(basic_auth_username, basic_auth_password))
 
+        logger.error("AUTH INSTANCE FOR OBJECT: %s", test_instance.auth)
         try:
             test_instance.get(url_path)
         except Exception as err:
@@ -327,7 +332,8 @@ class TestRequestAuthorization(BaseHttpServer):
         if hasattr(test_class, "_instances"):
             test_class._instances = {}
 
-        test_instance = test_class(base_url=base_url, username=basic_auth_username, password=basic_auth_password)
+        # test_instance = test_class(base_url=base_url, username=basic_auth_username, password=basic_auth_password)
+        test_instance = test_class(base_url=base_url, auth=(basic_auth_username, basic_auth_password))
 
         try:
             test_instance.get("/")
@@ -729,7 +735,7 @@ class TestRequestAuthorization(BaseHttpServer):
                     # test_instance.http.auth.reauth()
                     test_instance.reauth()
                     logger.info("Resending request...")
-                    return test_instance.http.send(response.request)
+                    return test_instance.send(response.request)
 
         # test_instance.add_response_hooks(auth_response_hook)
         # test_instance.replace_response_hooks(auth_response_hook)
@@ -881,7 +887,7 @@ class TestRequestAuthorization(BaseHttpServer):
 
         # test_instance = test_class(auth=ExampleTokenAuth)
         test_instance = test_class(base_url=base_url,
-                                   retry=request_retry_count,
+                                   retries=request_retry_count,
                                    auth=ExampleTokenAuth(auth_url=auth_url,
                                                          username=basic_auth_username,
                                                          password=basic_auth_password)

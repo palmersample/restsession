@@ -1,7 +1,7 @@
 """
 Define public interface imports
 """
-from .session import RestSession
+from .newsession import RestSession
 from .session_singleton import RestSessionSingleton
 
 
