@@ -72,7 +72,7 @@ class TestObjectParameters(aetest.Testcase):
         if hasattr(test_class.__class__, "_instances"):
             test_class.__class__._instances = {}
 
-        with test_class(**default_parameters) as class_instance:
+        with test_class() as class_instance:
             if hasattr(test_class, "_instances"):
                 logger.info("Instances: %s", test_class._instances)
                 assert test_class._instances != {}
@@ -91,7 +91,7 @@ class TestObjectParameters(aetest.Testcase):
         try:
             logger.info("Calling test class '%s' with no parameters", str(test_class))
             test_result = test_class()
-            object_parameters = test_result._session_params.dict()
+            object_parameters = test_result._session_params.model_dump()
             non_hook_params = {k: v for k, v in object_parameters.items() if k in default_parameters}
             logger.info("Expecting parameters:\n%s", default_parameters)
             logger.info("Retrieved object parameters:\n%s", non_hook_params)
@@ -112,8 +112,10 @@ class TestObjectParameters(aetest.Testcase):
 
         try:
             logger.info("Calling test class '%s' with custom parameters:\n%s", str(test_class), custom_parameters)
-            test_result = test_class(**custom_parameters)
-            object_parameters = test_result._session_params.dict()
+            test_result = test_class()
+            for param_name, param_val in custom_parameters.items():
+                setattr(test_result, param_name, param_val)
+            object_parameters = test_result._session_params.model_dump()
             non_hook_params = {k: v for k, v in object_parameters.items() if k in default_parameters}
             logger.info("Expecting parameters:\n%s", custom_parameters)
             logger.info("Retrieved object parameters:\n%s", non_hook_params)
@@ -129,9 +131,9 @@ class TestObjectParameters(aetest.Testcase):
             if "Singleton" in str(test_class):
                 logger.info("Double checking singleton.")
                 logger.info("Calling test class '%s' with default parameters:\n%s", str(test_class), default_parameters)
-                new_result = test_class(**default_parameters)
+                new_result = test_class()
                 new_result.timeout = custom_parameters["timeout"]
-                new_params = new_result._session_params.dict()
+                new_params = new_result._session_params.model_dump()
                 non_hook_params = {k: v for k, v in new_params.items() if k in default_parameters}
                 # new_result.timeout = 6
                 logger.info("Got new object params:\n%s", new_params)

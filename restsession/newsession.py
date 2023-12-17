@@ -54,27 +54,14 @@ class RestSession(BaseUrlSession):
     # _session_params = SessionParamModel()
 
     def __init__(self,
-                 base_url: Optional[str] = None,
-                 verify: bool = True,  # pylint: disable=unused-argument
+                 base_url: Optional[str] = None
                  ) -> None:
         """
         Initialize the object. All provided parameters will be passed through
         a Pydantic model which performs validation and, if necessary, sets
         default values.
 
-        :param timeout: (float) Request timeout in seconds
-        :param retries: (int) Total number of retries before failure
-        :param max_redirects: (int) Maximum redirects to follow before failure
-        :param backoff_factor: (float) Exponential backoff interval for each retry
-        :param retry_status_code_list: (list[int]) Force retry on these status codes
-        :param retry_method_list: (list[str]) Allow retries on these HTTP methods
-        :param respect_retry_headers: (bool) Whether to respect "Retry-After" header
         :param base_url: (URL) If specified, this will be the base URL for all subsequent requests
-        :param verify: (bool) Enable/Disable TLS certificate chain validation
-        :param username: (str) If specified with password, use for Basic authentication
-        :param password: (str) If specified with username, use for Basic authentication
-        :param auth: (tuple | AuthBase) If a username/password tuple or an AuthBase instance
-            is provided, set the session auth
         """
         super().__init__()
         try:
@@ -108,7 +95,6 @@ class RestSession(BaseUrlSession):
 
         self.mount("http://", TimeoutHTTPAdapter(timeout=self.timeout,
                                                        max_retries=default_retry_strategy))
-
 
     # def update_basic_auth(self):
     #     """
@@ -242,7 +228,7 @@ class RestSession(BaseUrlSession):
     def retry_status_code_list(self,
                                retry_status_code_list: list[
                                    conint(strict=True, ge=300, le=599)
-                               ] = SESSION_DEFAULTS["retry_status_codes"]) -> None:
+                               ] = SESSION_DEFAULTS["retry_status_code_list"]) -> None:
         """
         Change the list of status codes that result in a retry when received.
 
@@ -485,6 +471,7 @@ class RestSession(BaseUrlSession):
         try:
             self._session_params.headers = headers
         except ValidationError as err:
+            logger.info("Invalid param raised: %s", headers)
             raise InvalidParameterError(err) from err
 
     @property
@@ -584,9 +571,9 @@ class RestSession(BaseUrlSession):
             if not isinstance(hook, list):
                 hook = [hook]
             self._session_params.redirect_header_hook = hook
-            self.hooks["response"] = self.redirect_header_hook + \
-                                          self.response_hooks + \
-                                          self.request_exception_hook
+            self.hooks["response"] = [self.redirect_header_hook,
+                                          self.response_hooks,
+                                          self.request_exception_hook]
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 

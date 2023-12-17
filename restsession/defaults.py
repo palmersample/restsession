@@ -25,8 +25,10 @@ SERVER_ERROR_CODES = (503,)
 
 # Commonly used (?)
 DEFAULT_HEADERS = {
+    "User-Agent": "python-restsession/0.01",
     "Content-Type": "application/json",
-    "Accept": "application/json"
+    "Accept": "application/json",
+    "Connection": "keep-alive"
 }
 
 DEFAULT_HEADER_HOOKS = [remove_custom_auth_header_on_redirect]
@@ -42,8 +44,8 @@ SESSION_DEFAULTS = MappingProxyType(
         "retries": 3,
         "max_redirects": 16,
         "backoff_factor": 0.3,
-        "retry_status_codes": list(CLIENT_ERROR_CODES + SERVER_ERROR_CODES),
-        "retry_methods": [
+        "retry_status_code_list": list(CLIENT_ERROR_CODES + SERVER_ERROR_CODES),
+        "retry_method_list": [
             "HEAD",
             "GET",
             "PUT",
@@ -55,9 +57,7 @@ SESSION_DEFAULTS = MappingProxyType(
         ],
         "respect_retry_headers": True,
         "base_url": None,
-        "tls_verify": True,
-        "username": None,
-        "password": None,
+        "verify": True,
         "max_reauth": 3,
         "redirect_header_hook": DEFAULT_HEADER_HOOKS,
         "request_exception_hook": DEFAULT_EXCEPTION_HOOKS,

@@ -65,6 +65,8 @@ def default_request_exception_hook(response, **kwargs):  # pylint: disable=unuse
         logger.error("An unspecified request exception was encountered: %s", err)
         raise RequestException(err) from err
 
+    return response
+
 
 def remove_custom_auth_header_on_redirect(headers: Optional[list[str]] = ()):
     """

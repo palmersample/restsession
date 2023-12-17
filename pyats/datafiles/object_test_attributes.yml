@@ -20,7 +20,7 @@ parameters:
     password: True
 
   default_parameters:
-    timeout: 5
+    timeout: 5.0
     retries: 3
     max_redirects: 16
     backoff_factor: 0.3
@@ -48,7 +48,7 @@ parameters:
     password: null
 
   custom_parameters:
-    timeout: 10
+    timeout: 10.0
     retries: 2
     max_redirects: 3
     backoff_factor: 0.7

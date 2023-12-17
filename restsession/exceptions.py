@@ -3,6 +3,7 @@ Exception definitions and helper functions for restsession
 """
 import logging
 from string import Template
+from requests.exceptions import RequestException
 
 logger = logging.getLogger(__name__)
 
