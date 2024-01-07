@@ -214,6 +214,12 @@ def test_custom_auth_retry_on_failure(test_class,
                 logger.info("Token already present")
 
         def get_token(self):
+            """
+            Minimal function to get a new token from the auth server via HTTP
+            POST. TEST/EXAMPLE USE ONLY - NOT FOR PRODUCTION :)
+
+            :return: Token returned by the server
+            """
             token_result = requests.post(self.auth_url, auth=(self.username, self.password))
             token = token_result.json()["token"]
             return token
@@ -228,6 +234,13 @@ def test_custom_auth_retry_on_failure(test_class,
             return r
 
         def reauth(self, r, **kwargs):
+            """
+            Reauth hook to be called when a new token is required.
+
+            :param r: Requests 'respose' object
+            :param kwargs: keyword args passed from the hook
+            :return: Modifier response object to be reperformed after reauth
+            """
             if r.status_code == 401:
                 self.__class__.auth_request_count += 1
                 logger.info("Reauthenticating...")
@@ -251,6 +264,11 @@ def test_custom_auth_retry_on_failure(test_class,
             return r
 
     class TargetMockServerRequestHandler(MockServerRequestHandler):
+        """
+        The target handler - once auth is performed, this is the class to
+        process authorized requests. Inherits from the generic Mock Server
+        handler so core HTTP methods will return the default_response
+        """
         request_count = 0
         def send_default_response(self):
             """
@@ -286,7 +304,7 @@ def test_custom_auth_retry_on_failure(test_class,
                                                password="password")
 
         logger.error("Class instance hooks NOW: %s", class_instance.hooks)
-        auth_response = class_instance.request("get", target_server.url)
+        auth_response = class_instance.request(request_method, target_server.url)
         received_headers = auth_response.json().get("headers")
         auth_server.stop_server()
         target_server.stop_server()
@@ -300,6 +318,15 @@ def test_custom_auth_retry_on_failure(test_class,
 def test_basic_auth_header_removed_on_redirect(test_class,
                                                request_method,
                                                generic_mock_server):
+    """
+    Test the Authorization: Basic header is removed on a different-origin
+    redirect.
+
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param generic_mock_server:
+    :return: None
+    """
     class FirstMockServerRequestHandler(MockServerRequestHandler):
         def send_default_response(self):
             """
@@ -318,19 +345,10 @@ def test_basic_auth_header_removed_on_redirect(test_class,
             logger.debug("Redirecting to %s", self.__class__.next_server)
             self.send_header("Location", self.__class__.next_server)
             self.end_headers()
-            response_data = {
-                "headers": dict(self.headers),
-                "body": {}
-            }
-            self.wfile.write(bytes(json.dumps(response_data).encode("utf-8")))
-
-    class TargetMockServerRequestHandler(MockServerRequestHandler):
-        ...
 
     with test_class() as class_instance:
         auth_server = BaseHttpServer(handler=FirstMockServerRequestHandler)
-        target_server = BaseHttpServer(handler=TargetMockServerRequestHandler)
-        FirstMockServerRequestHandler.next_server = target_server.url
+        FirstMockServerRequestHandler.next_server = generic_mock_server.url
 
         auth_user = "username"
         auth_pass = "password"
@@ -340,7 +358,7 @@ def test_basic_auth_header_removed_on_redirect(test_class,
         received_headers = auth_response.json().get("headers")
         logger.debug("Test class received response headers:\n%s", received_headers)
         auth_server.stop_server()
-        target_server.stop_server()
+        generic_mock_server.stop_server()
 
         # The first request resulted in a redirect, Authorization should be removed
         assert "Authorization" not in received_headers, \
@@ -652,7 +670,6 @@ def test_basic_auth_header_not_removed_on_same_origin_redirect(test_class,
                          ])
 def test_custom_auth_header_not_removed_on_same_origin_redirect(test_class,
                                                                 request_method,
-                                                                generic_mock_server,
                                                                 custom_auth_header,
                                                                 custom_auth_token_one):
     class TargetMockServerRequestHandler(MockServerRequestHandler):

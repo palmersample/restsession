@@ -83,7 +83,8 @@ def request_method(request):
     yield request.param
 
 
-@pytest.fixture(scope="session")
+# @pytest.fixture(scope="session")
+@pytest.fixture
 def generic_mock_server():
     """
     Fixture for the generic HTTP mock server defined below. Use for
@@ -92,6 +93,17 @@ def generic_mock_server():
     :return: Instance of BaseHttpServer with the generic handler.
     """
     return BaseHttpServer(handler=MockServerRequestHandler)
+
+
+@pytest.fixture
+def redirect_mock_server():
+    """
+    Fixture for the generic HTTP mock server defined below. Use for
+    non-specific tests to verify core functionality.
+
+    :return: Instance of BaseHttpServer with the redirect handler.
+    """
+    return BaseHttpServer(handler=RedirectMockServerRequestHandler)
 
 
 class BaseHttpServer:
@@ -239,3 +251,27 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
         :return: self.send_default_response()
         """
         return self.send_default_response()
+
+
+class RedirectMockServerRequestHandler(MockServerRequestHandler):
+    """
+    Handler for redirects.
+    """
+    next_server = None
+    def send_default_response(self):
+        """
+        Generic response for tests in this file. Return any received headers
+        and body content as a JSON-encoded dictionary with key "headers"
+        containing received headers and key "body" with received body.
+
+        :return: None
+        """
+        logger.debug("Received request")
+        logger.debug("First server headers: %s", self.headers)
+        self.send_response(301)
+        self.send_header(
+            "Content-Type", "application/json; charset=utf-8"
+        )
+        logger.debug("Redirecting to %s", self.__class__.next_server)
+        self.send_header("Location", self.__class__.next_server)
+        self.end_headers()
