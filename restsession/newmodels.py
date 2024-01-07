@@ -229,7 +229,7 @@ class SessionParamModel(BaseModel):
 
     headers: Optional[dict[str, str]] = SESSION_DEFAULTS["headers"]
     auth_headers: dict = SESSION_DEFAULTS["auth_headers"]
-    timeout: float = SESSION_DEFAULTS["timeout"]
+    timeout: Union[float, tuple[float, float]] = SESSION_DEFAULTS["timeout"]
     retries: int = SESSION_DEFAULTS["retries"]
     max_redirects: int = SESSION_DEFAULTS["max_redirects"]
     backoff_factor: float = SESSION_DEFAULTS["backoff_factor"]
@@ -240,21 +240,9 @@ class SessionParamModel(BaseModel):
     tls_verify: bool = SESSION_DEFAULTS["verify"]
     auth: Optional[Union[tuple[str, str], AuthBase]] = SESSION_DEFAULTS["auth"]
     max_reauth: int = SESSION_DEFAULTS["max_reauth"]
-    redirect_header_hook: Optional[
-        conlist(
-            Callable,
-            min_length=0,
-            max_length=1
-        )
-    ] = SESSION_DEFAULTS["redirect_header_hook"]
-    request_exception_hook: Optional[
-        conlist(
-            Callable,
-            min_length=0,
-            max_length=1
-        )
-    ] = SESSION_DEFAULTS["request_exception_hook"]
+    redirect_header_hook: Optional[Callable] = None
     response_hooks: Optional[list[Callable]] = SESSION_DEFAULTS["response_hooks"]
+    request_exception_hook: Optional[Callable] = SESSION_DEFAULTS["request_exception_hook"]
 
     @field_validator("base_url")
     @classmethod

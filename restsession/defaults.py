@@ -4,8 +4,7 @@ supplied. MappingProxyType prevents mutation of the default parameters inside
 the code; use property setters to change once an instance has been created.
 """
 from types import MappingProxyType
-from .default_hooks import (remove_custom_auth_header_on_redirect,
-                            default_request_exception_hook)
+from .default_hooks import default_request_exception_hook
 
 
 # 301: Moved Permanently
@@ -31,8 +30,8 @@ DEFAULT_HEADERS = {
     "Connection": "keep-alive"
 }
 
-DEFAULT_HEADER_HOOKS = [remove_custom_auth_header_on_redirect]
-DEFAULT_EXCEPTION_HOOKS = [default_request_exception_hook]
+DEFAULT_HEADER_HOOKS = None
+DEFAULT_EXCEPTION_HOOKS = default_request_exception_hook
 DEFAULT_RESPONSE_HOOKS = []
 
 SESSION_DEFAULTS = MappingProxyType(

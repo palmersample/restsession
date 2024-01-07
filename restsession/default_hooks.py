@@ -33,7 +33,6 @@ def default_request_exception_hook(response, **kwargs):  # pylint: disable=unuse
     :param response: Requests response object
     :return: None
     """
-
     try:
         response.raise_for_status()
     except RequestTooManyRedirects as err:
@@ -68,36 +67,36 @@ def default_request_exception_hook(response, **kwargs):  # pylint: disable=unuse
     return response
 
 
-def remove_custom_auth_header_on_redirect(headers: Optional[list[str]] = ()):
-    """
-    Given a list of header keys, if any are present after a cross-domain
-    redirect they will be removed. The "Authorization" header is already
-    handled by the requests library, so this permits custom auth headers
-    to also be removed for security reasons.
-
-    The returned function (redirect_header_hook) will be the first response
-    hook attached to the Session object.
-
-    :param headers: List of header names to remove on redirect
-    :return: redirect_header_hook function reference to be used as a hook
-    """
-    def redirect_header_hook(response, **kwargs):  # pylint: disable=unused-argument
-        """
-        Hook used when a redirect response is received. If redirected to a
-        different host, remove any custom auth headers as supplied in the
-        wrapping function.
-
-        :param response: requests Response object
-        :param kwargs: Any arguments passed to the response hook by requests
-        :return: None
-        """
-        if response.is_redirect and headers and \
-                (urlparse(response.request.url).netloc !=
-                 urlparse(response.headers["Location"]).netloc):
-
-            # Only strip the headers when being redirected to a different host
-            response.request.headers = {
-                k: v for k, v in response.request.headers.items() if k not in headers
-            }
-
-    return redirect_header_hook
+# def remove_custom_auth_header_on_redirect(headers: Optional[list[str]] = (), *args, **kwargs):
+#     """
+#     Given a list of header keys, if any are present after a cross-domain
+#     redirect they will be removed. The "Authorization" header is already
+#     handled by the requests library, so this permits custom auth headers
+#     to also be removed for security reasons.
+#
+#     The returned function (redirect_header_hook) will be the first response
+#     hook attached to the Session object.
+#
+#     :param headers: List of header names to remove on redirect
+#     :return: redirect_header_hook function reference to be used as a hook
+#     """
+#     def redirect_header_hook(response, **kwargs):  # pylint: disable=unused-argument
+#         """
+#         Hook used when a redirect response is received. If redirected to a
+#         different host, remove any custom auth headers as supplied in the
+#         wrapping function.
+#
+#         :param response: requests Response object
+#         :param kwargs: Any arguments passed to the response hook by requests
+#         :return: None
+#         """
+#         if response.is_redirect and headers and \
+#                 (urlparse(response.request.url).netloc !=
+#                  urlparse(response.headers["Location"]).netloc):
+#             # Only strip the headers when being redirected to a different host
+#             response.request.headers = {
+#                 k: v for k, v in response.request.headers.items() if k not in headers
+#             }
+#         return response
+#
+#     return redirect_header_hook

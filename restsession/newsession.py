@@ -7,6 +7,7 @@ instantiation and ensure a valid session is available, even if an incorrect
 parameter is supplied.
 """
 import logging
+from urllib.parse import urlparse
 from typing import Optional
 from types import MappingProxyType
 from pydantic import (BaseModel, ValidationError, StrictInt, StrictFloat, conint)
@@ -17,19 +18,17 @@ from requests_toolbelt.sessions import BaseUrlSession
 from urllib3 import disable_warnings
 from urllib3.util.retry import Retry
 from .defaults import SESSION_DEFAULTS
-from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
+# from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
 from .newmodels import SessionParamModel
 from .exceptions import (InvalidParameterError, InitializationError)
 
 logger = logging.getLogger(__name__)
 
 
-class TimeoutHTTPAdapter(HTTPAdapter):
+class SessionRequestAdapter(HTTPAdapter):
     """
-    Extends the HTTPAdapter class to set a timeout for requests Session
-    objects.  When used for a session, set the timeout to the value of
-    REQUEST_TIMEOUT by default.  This will be overridden if the
-    'timeout' argument is supplied.
+    Adapter to mount for the HTTP Session. Allows the timeout to be set and
+    is where the urllib3 Retry class is attached for outgoing requests.
     """
     def __init__(self, *args, **kwargs):
         if "timeout" in kwargs:
@@ -72,10 +71,8 @@ class RestSession(BaseUrlSession):
 
         self.reauth_count = 0
 
-        self._session_params.redirect_header_hook = [remove_custom_auth_header_on_redirect(
-            headers=self.auth_headers.keys()
-        )]
-        self._session_params.request_exception_hook = [default_request_exception_hook]
+        # Initialize default response hooks
+        self.update_response_hooks()
 
         default_retry_strategy = Retry(
             total=self.retries,
@@ -90,24 +87,30 @@ class RestSession(BaseUrlSession):
 
         # Mount http/https to the request session and attach the timeout
         # adapter with defined retry strategy
-        self.mount("https://", TimeoutHTTPAdapter(timeout=self.timeout,
-                                                        max_retries=default_retry_strategy))
+        self.mount("https://", SessionRequestAdapter(timeout=self.timeout,
+                                                     max_retries=default_retry_strategy))
 
-        self.mount("http://", TimeoutHTTPAdapter(timeout=self.timeout,
-                                                       max_retries=default_retry_strategy))
+        self.mount("http://", SessionRequestAdapter(timeout=self.timeout,
+                                                    max_retries=default_retry_strategy))
 
-    # def update_basic_auth(self):
-    #     """
-    #     Called when the username or password properties are changed after
-    #     instantiation. If both properties are present, update the HTTP session
-    #     object to use Basic authentication using the provided credentials.
-    #
-    #     :return: None
-    #     """
-    #     if self.username and self.password:
-    #         my_auth_tuple = (self.username, self.password)
-    #         if isinstance(self.auth, tuple) and self.auth != my_auth_tuple:
-    #             self.auth = my_auth_tuple
+    def _update_mounted_adapters(self, adapter_property, new_value):
+        """
+        When an attribute related to a mounted adapter is changed, update the
+        adapters so the new setting takes effect.
+
+        :param adapter_property: The attribute of the adapter to update
+        :param new_value: New value of the attribute
+        :return: None
+        """
+        for adapter in self.adapters:
+            # If this is a timeout (or other base attribute), update it here
+            if getattr(self.adapters[adapter], adapter_property, None):
+                setattr(self.adapters[adapter], adapter_property, new_value)
+
+            # Otherwise, check if this is related to the Retry class and update
+            elif hasattr(self.adapters[adapter], "max_retries"):
+                if hasattr(self.adapters[adapter].max_retries, adapter_property):
+                    setattr(self.adapters[adapter].max_retries, adapter_property, new_value)
 
     @property
     def timeout(self):
@@ -131,6 +134,7 @@ class RestSession(BaseUrlSession):
         """
         try:
             self._session_params.timeout = timeout
+            self._update_mounted_adapters("timeout", timeout)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -156,6 +160,7 @@ class RestSession(BaseUrlSession):
         """
         try:
             self._session_params.retries = retries
+            self._update_mounted_adapters("total", retries)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -212,6 +217,7 @@ class RestSession(BaseUrlSession):
         """
         try:
             self._session_params.backoff_factor = backoff_factor
+            self._update_mounted_adapters("backoff_factor", backoff_factor)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -240,6 +246,7 @@ class RestSession(BaseUrlSession):
         """
         try:
             self._session_params.retry_status_code_list = retry_status_code_list
+            self._update_mounted_adapters("status_forcelist", retry_status_code_list)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -267,7 +274,10 @@ class RestSession(BaseUrlSession):
         :return: None
         """
         try:
+            if not (isinstance(retry_method_list, list) or isinstance(retry_method_list, tuple)):
+                retry_method_list = [retry_method_list]
             self._session_params.retry_method_list = retry_method_list
+            self._update_mounted_adapters("allowed_methods", retry_method_list)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -295,6 +305,7 @@ class RestSession(BaseUrlSession):
         """
         try:
             self._session_params.respect_retry_headers = respect_retry_headers
+            self._update_mounted_adapters("respect_retry_after_header", respect_retry_headers)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -496,12 +507,7 @@ class RestSession(BaseUrlSession):
         """
         try:
             self._session_params.auth_headers = headers
-            # This will overwrite the headers - probably not desired
-            self.headers = self._session_params.auth_headers
-            # This will delete every header on redirect - probably not desired
-            self.redirect_header_hook = remove_custom_auth_header_on_redirect(
-                headers=headers.keys()
-            )
+            self.headers.update(headers)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -549,33 +555,34 @@ class RestSession(BaseUrlSession):
     @property
     def redirect_header_hook(self):
         """
-        Currently configured response hook for redirect handling
+        Set the default redirect header hook. If different behavior is
+        desired, add the hook as a response_hook - this hook should always
+        be present.
 
-        :return: session response hook for redirects
+        :return: remove_auth_header_on_redirect
         """
+
+        def remove_auth_header_on_redirect(response, **kwargs):  # pylint: disable=unused-argument
+            """
+            Hook used when a redirect response is received. If redirected to a
+            different host and self.auth_headers is defined, remove any
+            defined auth_headers before returning the response object.
+
+            :param response: requests Response object
+            :param kwargs: Any arguments passed to the response hook by requests
+            :return: requests Response object without custom auth headers
+            """
+            if response.is_redirect and self.auth_headers and \
+                    (urlparse(response.request.url).netloc !=
+                     urlparse(response.headers["Location"]).netloc):
+                # Only strip the headers when being redirected to a different host
+                response.request.headers = {
+                    k: v for k, v in response.request.headers.items() if k not in self.auth_headers
+                }
+            return response
+
+        self._session_params.redirect_header_hook = remove_auth_header_on_redirect
         return self._session_params.redirect_header_hook
-
-    @redirect_header_hook.setter
-    def redirect_header_hook(self, hook):
-        """
-        Set (or replace) the response hook to handle redirects. By default,
-        the hook is configured to remove any custom auth headers before
-        re-sending a request when a redirect is received.
-
-        This hook will be the FIRST hook executed after a response.
-
-        :param headers: Function reference to become the redirect handler
-        :return: None
-        """
-        try:
-            if not isinstance(hook, list):
-                hook = [hook]
-            self._session_params.redirect_header_hook = hook
-            self.hooks["response"] = [self.redirect_header_hook,
-                                          self.response_hooks,
-                                          self.request_exception_hook]
-        except ValidationError as err:
-            raise InvalidParameterError(err) from err
 
     @property
     def request_exception_hook(self):
@@ -586,30 +593,25 @@ class RestSession(BaseUrlSession):
         """
         return self._session_params.request_exception_hook
 
-    @request_exception_hook.setter
-    def request_exception_hook(self, hook):
-        """
-        Set (or replace) the exception hook to handle HTTP errors.
-
-        By default, the hook will re-raise various exceptions generated
-        by the requests library or urllib3; however, it may be desirable to
-        replace this hook if custom exceptions should be raised.
-
-        This hook will be the LAST hook raised after a response, after the
-        redirect hook and any custom hooks.
-
-        :param headers: Function reference to become the exception handler hook
-        :return: None
-        """
-        try:
-            if not isinstance(hook, list):
-                hook = [hook]
-            self._session_params.request_exception_hook = hook
-            self.hooks["response"] = self.redirect_header_hook + \
-                                          self.response_hooks + \
-                                          self.request_exception_hook
-        except ValidationError as err:
-            raise InvalidParameterError(err) from err
+    # @request_exception_hook.setter
+    # def request_exception_hook(self, hook):
+    #     """
+    #     Set (or replace) the exception hook to handle HTTP errors.
+    #
+    #     By default, the hook will re-raise various exceptions generated
+    #     by the requests library or urllib3; however, it may be desirable to
+    #     replace this hook if custom exceptions should be raised.
+    #
+    #     This hook will be the LAST hook raised after a response, after the
+    #     redirect hook and any custom hooks.
+    #
+    #     :param headers: Function reference to become the exception handler hook
+    #     :return: None
+    #     """
+    #     try:
+    #         self._session_params.request_exception_hook = hook
+    #     except ValidationError as err:
+    #         raise InvalidParameterError(err) from err
 
     @property
     def response_hooks(self):
@@ -632,19 +634,42 @@ class RestSession(BaseUrlSession):
         These response hooks will be executed AFTER the redirect hook and
         BEFORE any exception handler hook.
 
-        :param headers: Function(s) to call after a response is received.
+        :param hooks: Function(s) to call after a response is received.
         :return: None
         """
         try:
-            if not isinstance(hooks, list):
-                hooks = [hooks]
+            # if not isinstance(hooks, list):
+            #     hooks = [hooks]
 
-            self._session_params.response_hooks = self._session_params.response_hooks + hooks
-            self.hooks["response"] = self.redirect_header_hook + \
-                                          self.response_hooks + \
-                                          self.request_exception_hook
+            # self._session_params.response_hooks = self._session_params.response_hooks + hooks
+            self._session_params.response_hooks.append(hooks)
+            self.update_response_hooks()
+            # self.hooks = {
+            #     "response": [
+            #         self.redirect_header_hook,
+            #         self.response_hooks,
+            #         self.request_exception_hook
+            #     ]
+            # }
         except ValidationError as err:
             raise InvalidParameterError(err) from err
+
+    def update_response_hooks(self):
+        """
+        Update all response hooks when changed
+
+        :return: None
+        """
+        # First hook will always be the redirect header hook.
+        self.hooks = {"response": [self.redirect_header_hook]}
+
+        # Append any user-defined response hooks...
+        for response_hook in self.response_hooks:
+            self.hooks["response"].append(response_hook)
+
+        # The final hook will always be the request exception hook.
+        self.hooks["response"].append(self.request_exception_hook)
+
 
     def clear_response_hooks(self):
         """
@@ -653,4 +678,4 @@ class RestSession(BaseUrlSession):
         :return: None
         """
         self._session_params.response_hooks = []
-        self.hooks["response"] = []
+        self.hooks = {"response": None}

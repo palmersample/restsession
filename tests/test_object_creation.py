@@ -11,6 +11,10 @@ import builtins
 
 logger = logging.getLogger(__name__)
 
+
+pytestmark = pytest.mark.objects
+
+
 @pytest.fixture
 def bad_session_attributes():
     return {
@@ -32,8 +36,7 @@ def bad_session_attributes():
         "response_hooks": True
     }
 
-# @pytest.mark.parametrize("test_class", [requests_toolbelt.sessions.BaseUrlSession,
-#                                         restsession.RestSession])
+
 def test_object_is_not_singleton(standard_test_class):
     object_one = standard_test_class()
     object_two = standard_test_class()

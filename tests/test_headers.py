@@ -17,6 +17,8 @@ from .conftest import BaseHttpServer
 
 logger = logging.getLogger(__name__)
 
+pytestmark = pytest.mark.headers
+
 
 class MockServerRequestHandler(BaseHTTPRequestHandler):
     """
