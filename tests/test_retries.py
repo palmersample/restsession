@@ -1,98 +1,64 @@
 """
 Test functions for request retries
 """
-# pylint: disable=redefined-outer-name, line-too-long
-from http.server import BaseHTTPRequestHandler
-import json
+# pylint: disable=redefined-outer-name, line-too-long, too-many-arguments
 import logging
+import time
 import pytest
 import requests_toolbelt.sessions
-import restsession
 import restsession.defaults
 import restsession.exceptions
 import requests.exceptions
 import requests.utils
-from .conftest import BaseHttpServer, MockServerRequestHandler
-import time
-
 
 logger = logging.getLogger(__name__)
 
-
 pytestmark = pytest.mark.retries
 
-# @pytest.fixture(params=[2, 3, 4])
+
 @pytest.fixture(params=[2])
 def request_retry_count(request):
+    """
+    Fixture for the number of retries before an exception is raised
+
+    :param request: pytest fixture parameter
+    :yields: The next fixture parameter
+    """
     yield request.param
 
 
 @pytest.fixture(params=[0.3, 1.0])
 def retry_backoff_factor(request):
+    """
+    Fixture to test different backoff factors for retries when no Retry-After
+    header is present
+
+    :param request: pytest fixture parameter
+    :yields: The next backoff factor in the fixture params
+    """
     yield request.param
 
 
 @pytest.fixture(params=restsession.defaults.SESSION_DEFAULTS["retry_status_code_list"])
 def retry_status_code(request):
+    """
+    Fixture for HTTP status codes to retry
+
+    :param request: pytest fixture parameter
+    :yields: The next status code in the fixture params
+    """
     yield request.param
 
 
-@pytest.fixture
-def retry_invalid_status_code():
-    return 500
-
-
-class RetryServerRequestHandler(MockServerRequestHandler):
+@pytest.fixture(params=[500])
+def retry_invalid_status_code(request):
     """
-    Handler definition for the generic HTTP request handler.
+    Fixture for HTTP status code(s) that should not be retried.
 
-    Define actions for basic HTTP operations here.
+    :param request: pytest fixture parameter
+    :yields: The next status code in the fixture params
     """
-    # pylint: disable=invalid-name, useless-return
-    max_retries = 0
-    response_code = 429
-    server_address = None
-    request_count = 0
-    retry_count = 0
-
-    def send_default_response(self):
-        """
-        Generic response for tests in this file. Return any received headers
-        and body content as a JSON-encoded dictionary with key "headers"
-        containing received headers and key "body" with received body.
-
-        :return: None
-        """
-        self.__class__.request_count += 1
-        self.__class__.retry_count += 1
-        logger.info("Server received a request, returning 429")
-        if self.__class__.request_count < self.__class__.max_retries:
-            self.send_response(self.__class__.response_code)
-            self.send_header(
-                "Content-Type", "application/json; charset=utf-8"
-            )
-            self.send_header("Retry-After", "1")
-        else:
-            self.send_response(200)
-        self.end_headers()
-        return
-
-
-@pytest.fixture
-def mock_server():
-    """
-    Start the mock server for incoming requests
-
-    :return: BaseHttpServer instance with this test's request handler
-    """
-    # Max retries should just be something big. Can adjust for any test that
-    # checks for a 200 after retry
-    RetryServerRequestHandler.max_retries = 99
-    RetryServerRequestHandler.request_count = 0
-    RetryServerRequestHandler.response_code = 429
-    RetryServerRequestHandler.retry_count = 0
-    RetryServerRequestHandler.server_address = None
-    return BaseHttpServer(handler=RetryServerRequestHandler)
+    yield request.param
 
 
 @pytest.mark.parametrize("test_class",
@@ -104,26 +70,31 @@ def mock_server():
                              restsession.RestSession,
                              restsession.RestSessionSingleton
                          ])
-@pytest.mark.good_one
-def test_successful_retry(test_class, request_method, request_retry_count, mock_server):
+def test_successful_retry(test_class,
+                          request_method,
+                          request_retry_count,
+                          retry_mock_server):
+    """
+    Test that the mounted Retry adapter successfully retries a request when
+    a 429 is returned
 
-    # Expected retry should be the configured retry count + 1, as the
-    # first request hits and then receives a 429. After experiencing
-    # (request_retry_count) responses of 429, the exception will be raised.
-    # Each request hitting the server will increment the retry counter
-    expected_retry_count = request_retry_count + 1
-
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param request_retry_count: Fixture for the number of retries to test
+    :param retry_mock_server: Fixture for the retry mock server
+    :return: None
+    """
     with test_class() as class_instance:
         class_instance.retries = request_retry_count
         class_instance.backoff_factor = 0.0
-        RetryServerRequestHandler.max_retries = request_retry_count
+        retry_mock_server.set_handler_retries(max_retries=request_retry_count)
 
-        request_response = class_instance.request(request_method, mock_server.url)
-        mock_server.stop_server()
+        request_response = class_instance.request(request_method, retry_mock_server.url)
+        server_retry_count = retry_mock_server.mock_server.RequestHandlerClass.retry_count
 
-        assert RetryServerRequestHandler.retry_count == request_retry_count, \
-            f"Expected {expected_retry_count} retries, " \
-            f"server received {RetryServerRequestHandler.retry_count}"
+        assert server_retry_count == request_retry_count, \
+            f"Expected {request_retry_count} retries, " \
+            f"server received {server_retry_count}"
 
         assert request_response.ok, \
             f"Expected a successful response code, got: {request_response.status_code}"
@@ -138,10 +109,21 @@ def test_successful_retry(test_class, request_method, request_retry_count, mock_
                              restsession.RestSession,
                              restsession.RestSessionSingleton
                          ])
-@pytest.mark.respect
-def test_too_many_respectful_retries(test_class, request_method, request_retry_count, mock_server):
+def test_too_many_respectful_retries(test_class,
+                                     request_method,
+                                     request_retry_count,
+                                     retry_mock_server):
+    """
+    Test that the mounted Retry adapter properly honors a "Retry-After" header
+    in the mock server response.
 
-    # Expected retry should be the configured retry count + 1, as the
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param request_retry_count: Fixture for the number of retries to test
+    :param retry_mock_server: Fixture for the retry mock server
+    :return: None
+    """
+    # Expected retry should be the request retry count + 1, as the
     # first request hits and then receives a 429. After experiencing
     # (request_retry_count) responses of 429, the exception will be raised.
     # Each request hitting the server will increment the retry counter
@@ -150,28 +132,23 @@ def test_too_many_respectful_retries(test_class, request_method, request_retry_c
     with test_class() as class_instance:
         class_instance.retries = request_retry_count
         class_instance.backoff_factor = 0.0
-        try:
-            start_time = time.time()
-            class_instance.request(request_method, mock_server.url)
-        # RetryError will be thrown after the last retry with no response.
-        except requests.exceptions.RetryError:
-            end_time = time.time() - start_time
-        mock_server.stop_server()
+        start_time = time.time()
+        with pytest.raises(requests.exceptions.RetryError) as exc_info:  # pylint: disable=unused-variable
+            class_instance.request(request_method, retry_mock_server.url)
+        end_time = time.time() - start_time
 
-        assert RetryServerRequestHandler.retry_count == expected_retry_count, \
+        server_retry_count = retry_mock_server.mock_server.RequestHandlerClass.retry_count
+
+        assert server_retry_count == expected_retry_count, \
             f"Expected {expected_retry_count} retries, " \
-            f"server received {RetryServerRequestHandler.retry_count}"
+            f"server received {server_retry_count}"
 
         logger.info("Total time for request: %s", end_time)
 
         assert end_time >= request_retry_count, \
             "Total time of requests should be larger than the request retry count.\n" \
-            f"Number of retries: {RetryServerRequestHandler.retry_count}\n" \
+            f"Number of retries: {server_retry_count}\n" \
             f"Elapsed time: {end_time}"
-
-        assert RetryServerRequestHandler.retry_count == expected_retry_count, \
-            f"Expected {expected_retry_count} retries, " \
-            f"server received {RetryServerRequestHandler.retry_count}"
 
 
 @pytest.mark.parametrize("test_class",
@@ -184,8 +161,20 @@ def test_too_many_respectful_retries(test_class, request_method, request_retry_c
                              restsession.RestSessionSingleton
                          ])
 @pytest.mark.disrespect
-def test_too_many_disrespectful_retries(test_class, request_method, request_retry_count, mock_server):
+def test_too_many_disrespectful_retries(test_class,
+                                        request_method,
+                                        request_retry_count,
+                                        retry_mock_server):
+    """
+    Test that a RetryError is raised when the retry count is exceeded, and
+    ignore any "Retry-After" header from the server.
 
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param request_retry_count: Fixture for the number of retries to test
+    :param retry_mock_server: Fixture for the retry mock server
+    :return: None
+    """
     # Expected retry should be the configured retry count + 1, as the
     # first request hits and then receives a 429. After experiencing
     # (request_retry_count) responses of 429, the exception will be raised.
@@ -197,36 +186,26 @@ def test_too_many_disrespectful_retries(test_class, request_method, request_retr
         class_instance.backoff_factor = 0.0
         class_instance.respect_retry_headers = False
 
-        try:
-            start_time = time.time()
-            class_instance.request(request_method, mock_server.url)
-        # RetryError will be thrown after the last retry with no response.
-        except requests.exceptions.RetryError:
-            end_time = time.time() - start_time
-        # test_server.stop_mock_server(mock_server=test_server)
-        mock_server.stop_server()
-        # logger.error("ESTIMATED BACKOFF: %s", mock_server.estimated_backoff)
+        start_time = time.time()
+        with pytest.raises(requests.exceptions.RetryError) as exc_info:  # pylint: disable=unused-variable
+            class_instance.request(request_method, retry_mock_server.url)
 
-        assert RetryServerRequestHandler.retry_count == expected_retry_count, \
+        end_time = time.time() - start_time
+
+        server_retry_count = retry_mock_server.mock_server.RequestHandlerClass.retry_count
+
+        assert server_retry_count == expected_retry_count, \
             f"Expected {expected_retry_count} retries, " \
-            f"server received {RetryServerRequestHandler.retry_count}"
+            f"server received {server_retry_count}"
 
         logger.info("Total time for request: %s", end_time)
 
         # assert end_time < MockServerRequestHandler.estimated_backoff, \
         assert end_time < request_retry_count, \
             "Total time of requests should be less than the request retry count.\n" \
-            f"Number of retries: {mock_server.__class__.retry_count}\n" \
+            f"Number of retries: {server_retry_count}\n" \
             f"Elapsed time: {end_time}"
 
-        # assert end_time < request_retry_count, \
-        #     "Total time of requests should be less than the request retry count.\n" \
-        #     f"Number of retries: {MockServerRequestHandler.retry_count}\n" \
-        #     f"Elapsed time: {end_time}"
-
-        # assert MockServerRequestHandler.retry_count == expected_retry_count, \
-        #     f"Expected {expected_retry_count} retries, " \
-        #     f"server received {MockServerRequestHandler.retry_count}"
 
 @pytest.mark.parametrize("test_class",
                          [
@@ -237,33 +216,22 @@ def test_too_many_disrespectful_retries(test_class, request_method, request_retr
                              restsession.RestSession,
                              restsession.RestSessionSingleton
                          ])
-@pytest.mark.backoff
-def test_retry_backoff_factor(test_class, request_method, request_retry_count, retry_backoff_factor, mock_server):
-    # class MockServerRequestHandler(BaseHTTPRequestHandler):
-    #     backoff_factor = retry_backoff_factor
-    #     estimated_backoff = 0.0
-    #     server_address = None
-    #     request_count = 0
-    #     retry_count = 0
-    #
-    #     def do_GET(self):
-    #         self.__class__.estimated_backoff = self.__class__.backoff_factor * (2 ** (self.__class__.request_count))
-    #         logger.error("Current estimated backoff: %s", self.__class__.estimated_backoff)
-    #         self.__class__.request_count += 1
-    #         self.__class__.retry_count += 1
-    #         logger.info("Server received a request, returning 429")
-    #         logger.info(time.time())
-    #         self.send_response(429)
-    #         self.send_header(
-    #             "Content-Type", "application/json; charset=utf-8"
-    #         )
-    #         self.send_header("Retry-After", "10")
-    #         self.end_headers()
-    #         return
-    #
-    # test_server = BaseHttpServer(handler=MockServerRequestHandler)
-    # test_url = f"http://{MockServerRequestHandler.server_address}"
+def test_retry_backoff_factor(test_class,
+                              request_method,
+                              request_retry_count,
+                              retry_backoff_factor,
+                              retry_mock_server):
+    """
+    Test that the retry backoff factor is honored when Retry-After is ignored
+    but a retry is necessary.
 
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param request_retry_count: Fixture for the number of retries to test
+    :param retry_backoff_factor: Fixture for the backoff factor to test
+    :param retry_mock_server: Fixture for the retry mock server
+    :return: None
+    """
     # Expected retry should be the configured retry count + 1, as the
     # first request hits and then receives a 429. After experiencing
     # (request_retry_count) responses of 429, the exception will be raised.
@@ -279,25 +247,25 @@ def test_retry_backoff_factor(test_class, request_method, request_retry_count, r
         class_instance.backoff_factor = retry_backoff_factor
         class_instance.respect_retry_headers = False
 
-        try:
-            start_time = time.time()
-            class_instance.request(request_method, mock_server.url)
-        # RetryError will be thrown after the last retry with no response.
-        except requests.exceptions.RetryError:
-            end_time = time.time() - start_time
-        mock_server.stop_server()
 
+        start_time = time.time()
+        with pytest.raises(requests.exceptions.RetryError) as exc_info:  # pylint: disable=unused-variable
+            class_instance.request(request_method, retry_mock_server.url)
+
+        end_time = time.time() - start_time
+
+        server_retry_count = retry_mock_server.mock_server.RequestHandlerClass.retry_count
         logger.error("ESTIMATED BACKOFF: %s", estimated_backoff)
 
-        assert RetryServerRequestHandler.retry_count == expected_retry_count, \
+        assert server_retry_count == expected_retry_count, \
             f"Expected {expected_retry_count} retries, " \
-            f"server received {RetryServerRequestHandler.retry_count}"
+            f"server received {server_retry_count}"
 
         logger.info("Total time for request: %s", end_time)
 
         assert end_time < estimated_backoff, \
             "Total time of requests should be less than the request retry count.\n" \
-            f"Number of retries: {RetryServerRequestHandler.retry_count}\n" \
+            f"Number of retries: {server_retry_count}\n" \
             f"Elapsed time: {end_time}"
 
 @pytest.mark.parametrize("test_class",
@@ -309,9 +277,22 @@ def test_retry_backoff_factor(test_class, request_method, request_retry_count, r
                              restsession.RestSession,
                              restsession.RestSessionSingleton
                          ])
-@pytest.mark.status
-def test_retry_status_code_list(test_class, request_method, request_retry_count, retry_status_code, mock_server):
+def test_retry_status_code_list(test_class,
+                                request_method,
+                                request_retry_count,
+                                retry_status_code,
+                                retry_mock_server):
+    """
+    Test each status code in the retry status code list to ensure the request
+    is retried.
 
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param request_retry_count: Fixture for the number of retries to test
+    :param retry_status_code: Fixture for the mock server response status code
+    :param retry_mock_server: Fixture for the retry mock server
+    :return: None
+    """
     # Expected retry should be the configured retry count + 1, as the
     # first request hits and then receives a 429. After experiencing
     # (request_retry_count) responses of 429, the exception will be raised.
@@ -322,28 +303,21 @@ def test_retry_status_code_list(test_class, request_method, request_retry_count,
         class_instance.retries = request_retry_count
         class_instance.backoff_factor = 0.0
         class_instance.respect_retry_headers = False
-        RetryServerRequestHandler.response_code = retry_status_code
-        try:
-            start_time = time.time()
-            class_instance.request(request_method, mock_server.url)
-        # RetryError will be thrown after the last retry with no response.
-        except requests.exceptions.RetryError:
-            end_time = time.time() - start_time
-        mock_server.stop_server()
+        retry_mock_server.set_handler_response_code(response_code=retry_status_code)
 
-        # logger.error("ESTIMATED BACKOFF: %s", MockServerRequestHandler.estimated_backoff)
+        start_time = time.time()
+        with pytest.raises(requests.exceptions.RetryError) as exc_info:  # pylint: disable=unused-variable
+            class_instance.request(request_method, retry_mock_server.url)
 
-        assert RetryServerRequestHandler.retry_count == expected_retry_count, \
+        end_time = time.time() - start_time
+
+        server_retry_count = retry_mock_server.mock_server.RequestHandlerClass.retry_count
+
+        assert server_retry_count == expected_retry_count, \
             f"Expected {expected_retry_count} retries, " \
-            f"server received {RetryServerRequestHandler.retry_count}"
+            f"server received {server_retry_count}"
 
         logger.info("Total time for request: %s", end_time)
-
-        # assert end_time < MockServerRequestHandler.estimated_backoff, \
-        # assert end_time < estimated_backoff, \
-        #     "Total time of requests should be less than the request retry count.\n" \
-        #     f"Number of retries: {RedirectServerRequestHandler.retry_count}\n" \
-        #     f"Elapsed time: {end_time}"
 
 
 @pytest.mark.parametrize("test_class",
@@ -355,10 +329,23 @@ def test_retry_status_code_list(test_class, request_method, request_retry_count,
                              restsession.RestSession,
                              restsession.RestSessionSingleton
                          ])
-@pytest.mark.status
-def test_retry_status_code_not_in_list(test_class, request_method, request_retry_count, retry_status_code, retry_invalid_status_code, mock_server):
+def test_retry_status_code_not_in_list(test_class,
+                                       request_method,
+                                       request_retry_count,
+                                       retry_invalid_status_code,
+                                       retry_mock_server):
+    """
+    Test that a retry is NOT performed when a status code is returned that is
+    not in the retry status code list.
 
-    RetryServerRequestHandler.response_code = retry_invalid_status_code
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param request_retry_count: Fixture for the number of retries to test
+    :param retry_invalid_status_code: Fixture for the mock server non-retry response
+    :param retry_mock_server: Fixture for the retry mock server
+    :return: None
+    """
+    retry_mock_server.set_handler_response_code(response_code=retry_invalid_status_code)
 
     with test_class() as class_instance:
         class_instance.retries = request_retry_count
@@ -366,10 +353,7 @@ def test_retry_status_code_not_in_list(test_class, request_method, request_retry
         class_instance.respect_retry_headers = False
 
         with pytest.raises(requests.exceptions.HTTPError):
-            class_instance.request(request_method, mock_server.url)
-
-        logger.debug("Stopping the mock server...")
-        mock_server.stop_server()
+            class_instance.request(request_method, retry_mock_server.url)
 
 
 @pytest.mark.parametrize("test_class",
@@ -381,9 +365,20 @@ def test_retry_status_code_not_in_list(test_class, request_method, request_retry
                              restsession.RestSession,
                              restsession.RestSessionSingleton
                          ])
-@pytest.mark.status
-def test_retry_method_not_in_list(test_class, request_method, request_retry_count, retry_status_code, retry_invalid_status_code, mock_server):
+def test_retry_method_not_in_list(test_class,
+                                  request_method,
+                                  request_retry_count,
+                                  retry_mock_server):
+    """
+    Test that retries are NOT performed for HTTP methods not present in the
+    retry method list.
 
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param request_retry_count: Fixture for the number of retries to test
+    :param retry_mock_server: Fixture for the retry mock server
+    :return: None
+    """
     with test_class() as class_instance:
         class_instance.retries = request_retry_count
         class_instance.backoff_factor = 0.0
@@ -393,16 +388,17 @@ def test_retry_method_not_in_list(test_class, request_method, request_retry_coun
 
         if request_method.lower() != "get":
             expected_retry_count = 1
-            with pytest.raises(requests.exceptions.HTTPError):  # HTTP Error AND RetryError are raised?
-                class_instance.request(request_method, mock_server.url)
+            with pytest.raises(requests.exceptions.HTTPError):
+                class_instance.request(request_method, retry_mock_server.url)
         else:
             expected_retry_count = request_retry_count + 1
             with pytest.raises(requests.exceptions.RetryError):
-                class_instance.request(request_method, mock_server.url)
+                class_instance.request(request_method, retry_mock_server.url)
 
-        assert RetryServerRequestHandler.retry_count == expected_retry_count, \
+        server_retry_count = retry_mock_server.mock_server.RequestHandlerClass.retry_count
+
+        assert server_retry_count == expected_retry_count, \
             f"Expected {expected_retry_count} retries, " \
-            f"server received {RetryServerRequestHandler.retry_count}"
+            f"server received {server_retry_count}"
 
         logger.debug("Stopping the mock server...")
-        mock_server.stop_server()

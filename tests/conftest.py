@@ -84,7 +84,7 @@ def request_method(request):
 
 
 # @pytest.fixture(scope="session")
-@pytest.fixture
+@pytest.fixture(scope="module")
 def generic_mock_server():
     """
     Fixture for the generic HTTP mock server defined below. Use for
@@ -92,10 +92,23 @@ def generic_mock_server():
 
     :return: Instance of BaseHttpServer with the generic handler.
     """
-    return BaseHttpServer(handler=MockServerRequestHandler)
+    mock_server = BaseHttpServer(handler=MockServerRequestHandler)
+    yield mock_server
+    mock_server.stop_server()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function", autouse=True)
+def reset_generic_handler():
+    """
+    Autouse fixture to reset the generic handler class variables for each
+    test function.
+
+    :return: None
+    """
+    MockServerRequestHandler.sleep_time = 0
+
+
+@pytest.fixture(scope="module")
 def redirect_mock_server():
     """
     Fixture for the generic HTTP mock server defined below. Use for
@@ -103,7 +116,53 @@ def redirect_mock_server():
 
     :return: Instance of BaseHttpServer with the redirect handler.
     """
-    return BaseHttpServer(handler=RedirectMockServerRequestHandler)
+    mock_server = BaseHttpServer(handler=RedirectMockServerRequestHandler)
+    yield mock_server
+    mock_server.stop_server()
+
+
+@pytest.fixture(scope="function",
+                autouse=True)
+def reset_redirect_handler():
+    """
+    Autouse fixture to reset the redirect handler class variables for each
+    test function
+
+    :return: None
+    """
+    RedirectMockServerRequestHandler.next_server = None
+    RedirectMockServerRequestHandler.max_redirect = 1
+    RedirectMockServerRequestHandler.redirect_count = 0
+    RedirectMockServerRequestHandler.response_code = 301
+
+
+@pytest.fixture(scope="module")
+def retry_mock_server():
+    """
+    Fixture for the generic HTTP mock server defined below. Use for
+    testing the Retry adapters.
+
+    :return: Instance of BaseHttpServer with the retry handler.
+    """
+    mock_server = BaseHttpServer(handler=RetryServerRequestHandler)
+    yield mock_server
+    mock_server.stop_server()
+
+
+@pytest.fixture(scope="function",
+                autouse=True)
+def reset_retry_handler():
+    """
+    Autouse fixture to reset the retry handler class variables for each
+    test function
+
+    :return: None
+    """
+    # Set max retries to something large so it will perpetually retry unless
+    # overridden.
+    RetryServerRequestHandler.max_retries = 99
+    RetryServerRequestHandler.retry_count = 0
+    RetryServerRequestHandler.response_code = 429
 
 
 class BaseHttpServer:
@@ -137,7 +196,7 @@ class BaseHttpServer:
 
     def __init__(self, handler, bind_address="localhost"):
         def get_free_port():
-            s = socket.socket(socket.AF_INET, type=socket.SOCK_STREAM)
+            s = socket.socket(socket.AF_INET, type=socket.SOCK_STREAM)  # pylint: disable=invalid-name
             s.bind((bind_address, 0))
             _, port = s.getsockname()
             s.close()
@@ -154,6 +213,49 @@ class BaseHttpServer:
         self.url = f"http://{handler.server_address}"
         self.__class__.mock_servers[self.mock_server] = mock_server_thread
 
+    def set_handler_redirect(self, next_server, max_redirect=1):
+        """
+        Set a "next_server" attribute for the attached request handler. If
+        supported, the handler will use this attribute to generate a redirect
+        to the specified URL
+
+        :param next_server: URL of the redirect target
+        :param max_redirect: Maximum number of redirects to generate
+        :return: None
+        """
+        self.mock_server.RequestHandlerClass.next_server = next_server
+        self.mock_server.RequestHandlerClass.max_redirect = max_redirect
+
+    def set_handler_response_code(self, response_code):
+        """
+        Set the returned HTTP response code to be returned by the attached
+        request handler.
+
+        :param response_code: HTTP response code that should be returned
+        :return: None
+        """
+        self.mock_server.RequestHandlerClass.response_code = response_code
+
+    def set_handler_response_delay(self, delay_seconds):
+        """
+        Set the sleep_time class variable to delay the time between
+        initial connection and responding to the client. Used for testing
+        timeouts.
+
+        :param delay_seconds: Number of seconds to sleep
+        :return: None
+        """
+        self.mock_server.RequestHandlerClass.sleep_time = delay_seconds
+
+    def set_handler_retries(self, max_retries=1):
+        """
+        Set a the number of retries for the RetryHandler class
+
+        :param max_retries: Maximum number of retry responses to generate
+        :return: None
+        """
+        self.mock_server.RequestHandlerClass.max_retries = max_retries
+
 
 class MockServerRequestHandler(BaseHTTPRequestHandler):
     """
@@ -163,6 +265,7 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
     """
     # pylint: disable=invalid-name, useless-return
     server_address = None
+    sleep_time = 0
     # sleep_time = 0
     # request_count = 0
     # received_headers = None
@@ -178,13 +281,13 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
         if content_len := int(self.headers.get('content-length', 0)):
             received_body = self.rfile.read(content_len).decode("utf-8")
         else:
-            received_body = None
+            received_body = {}
 
         logger.debug("Received request")
         logger.debug("Received headers: %s", self.headers)
         logger.debug("Received body: %s", received_body)
-        if hasattr(self, "sleep_time"):
-            time.sleep(self.sleep_time)
+        if getattr(self.__class__, "sleep_time", None):
+            time.sleep(self.__class__.sleep_time)
         self.send_response(200)
         self.send_header(
             "Content-Type", "application/json; charset=utf-8"
@@ -258,6 +361,10 @@ class RedirectMockServerRequestHandler(MockServerRequestHandler):
     Handler for redirects.
     """
     next_server = None
+    max_redirect = 1
+    redirect_count = 0
+    response_code = 301
+
     def send_default_response(self):
         """
         Generic response for tests in this file. Return any received headers
@@ -268,10 +375,61 @@ class RedirectMockServerRequestHandler(MockServerRequestHandler):
         """
         logger.debug("Received request")
         logger.debug("First server headers: %s", self.headers)
-        self.send_response(301)
-        self.send_header(
-            "Content-Type", "application/json; charset=utf-8"
-        )
-        logger.debug("Redirecting to %s", self.__class__.next_server)
-        self.send_header("Location", self.__class__.next_server)
+        if content_len := int(self.headers.get('content-length', 0)):
+            received_body = self.rfile.read(content_len).decode("utf-8")
+        else:
+            received_body = {}
+
+        if self.redirect_count < self.__class__.max_redirect:
+            self.send_response(self.__class__.response_code)
+            self.send_header(
+                "Content-Type", "application/json; charset=utf-8"
+            )
+            logger.debug("Redirecting to %s", self.__class__.next_server)
+            self.send_header("Location", self.__class__.next_server)
+            self.end_headers()
+            self.__class__.redirect_count += 1
+        else:
+            self.send_response(200)
+            self.send_header(
+                "Content-Type", "application/json; charset=utf-8"
+            )
+            # self.__class__.redirect_count = 0
+            self.end_headers()
+            response_data = {
+                "headers": dict(self.headers),
+                "body": received_body
+            }
+            self.wfile.write(bytes(json.dumps(response_data).encode("utf-8")))
+
+
+class RetryServerRequestHandler(MockServerRequestHandler):
+    """
+    Handler definition for the generic HTTP request handler.
+
+    Define actions for basic HTTP operations here.
+    """
+    # pylint: disable=invalid-name, useless-return
+    max_retries = 0
+    retry_count = 0
+    response_code = 429
+
+    def send_default_response(self):
+        """
+        Generic response for tests in this file. Return any received headers
+        and body content as a JSON-encoded dictionary with key "headers"
+        containing received headers and key "body" with received body.
+
+        :return: None
+        """
+        logger.info("Server received a request, returning 429")
+        if self.__class__.retry_count < self.__class__.max_retries:
+            self.send_response(self.__class__.response_code)
+            self.send_header(
+                "Content-Type", "application/json; charset=utf-8"
+            )
+            self.send_header("Retry-After", "1")
+            self.__class__.retry_count += 1
+        else:
+            self.send_response(200)
         self.end_headers()
