@@ -3,7 +3,6 @@ Exception definitions and helper functions for restsession
 """
 import logging
 from string import Template
-from requests.exceptions import RequestException
 
 logger = logging.getLogger(__name__)
 
@@ -23,24 +22,24 @@ class InvalidParameterError(RestSessionError):
     """
 
     def __init__(self, err_obj):
-        ERROR_STRING = Template("Invalid value for attribute '$field_name':\n"
-                                "  $message\n"
-                                "    expected_type: $expected_type\n"
-                                "    received_val:  $received_val\n"
-                                "    received_type: $received_type\n"
-                                "**********\n")
+        errmsg_template = Template("Invalid value for attribute '$field_name':\n"
+                                   "  $message\n"
+                                   "    expected_type: $expected_type\n"
+                                   "    received_val:  $received_val\n"
+                                   "    received_type: $received_type\n"
+                                   "**********\n")
 
         def format_exception(exc_err):
             pretty_error = ("Error occurred during data validation\n"
                             "**********\n")
 
             for err_dict in exc_err.errors():
-                pretty_error += ERROR_STRING.substitute(field_name=err_dict["loc"][0],
-                                                        message=err_dict["msg"],
-                                                        expected_type=err_dict["type"],
-                                                        received_val=err_dict["input"],
-                                                        received_type=type(err_dict["input"])
-                                                        )
+                pretty_error += errmsg_template.substitute(field_name=err_dict["loc"][0],
+                                                           message=err_dict["msg"],
+                                                           expected_type=err_dict["type"],
+                                                           received_val=err_dict["input"],
+                                                           received_type=type(err_dict["input"])
+                                                           )
             return pretty_error
 
         if hasattr(err_obj, "errors"):

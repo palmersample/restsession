@@ -64,7 +64,6 @@ class RestSession(BaseUrlSession):
         """
         super().__init__()
         try:
-            # self._session_params = NewSessionParamModel.model_validate(locals())
             self._session_params = SessionParamModel.model_validate(locals())
         except ValidationError as err:
             raise InitializationError(err) from err
