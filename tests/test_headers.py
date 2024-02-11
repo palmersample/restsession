@@ -53,8 +53,10 @@ def test_default_headers(test_class, default_headers):
     :param default_headers: Fixture to return the expected default headers
     :return: None
     """
-    with test_class() as class_instance:
-        assert class_instance.headers == default_headers
+    with (test_class() as class_instance):
+        logger.error("MRO: %s", type(class_instance).mro())
+        assert class_instance.headers == default_headers, \
+            f"Instance headers:\n{class_instance.headers}\nDefault headers:\n{default_headers}"
 
 
 def test_good_headers(test_class, good_headers):

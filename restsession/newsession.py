@@ -7,14 +7,16 @@ instantiation and ensure a valid session is available, even if an incorrect
 parameter is supplied.
 """
 import logging
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from typing import Optional
 from types import MappingProxyType
-from pydantic import (BaseModel, ValidationError, StrictInt, StrictFloat, conint)
+# from pydantic import (BaseModel, ValidationError, StrictInt, StrictFloat, conint)
+from pydantic import (ValidationError, StrictInt, StrictFloat, conint)
 from requests.exceptions import (HTTPError as RequestHTTPError)
 from requests.adapters import HTTPAdapter
+from requests import Session as RequestSession
 
-from requests_toolbelt.sessions import BaseUrlSession
+# from requests_toolbelt.sessions import BaseUrlSession
 from urllib3 import disable_warnings
 from urllib3.util.retry import Retry
 from .defaults import SESSION_DEFAULTS
@@ -43,14 +45,19 @@ class SessionRequestAdapter(HTTPAdapter):
         return super().send(request, **kwargs)
 
 
-class RestSession(BaseUrlSession):
+class ExtendedSession(RequestSession):
+    def __init__(self):
+        self._session_params = SessionParamModel
+        super().__init__()
+
+
+# class RestSession(RequestSession):
+class RestSession(ExtendedSession):
     """
     Main HTTP Session class. On init, create a new HTTP base URL session for the
     object, generate all needed settings for timeout/retries and configure
     HTTP Basic authentication if a username/password is provided.
     """
-    _session_params = BaseModel
-    # _session_params = SessionParamModel()
 
     def __init__(self,
                  base_url: Optional[str] = None
@@ -63,11 +70,14 @@ class RestSession(BaseUrlSession):
         :param base_url: (URL) If specified, this will be the base URL for all subsequent requests
         """
         super().__init__()
+
         try:
-            # self._session_params = NewSessionParamModel.model_validate(locals())
             self._session_params = SessionParamModel.model_validate(locals())
         except ValidationError as err:
             raise InitializationError(err) from err
+
+        if base_url:
+            self._base_url = base_url
 
         self.reauth_count = 0
 
@@ -111,6 +121,32 @@ class RestSession(BaseUrlSession):
             elif hasattr(self.adapters[adapter], "max_retries"):
                 if hasattr(self.adapters[adapter].max_retries, adapter_property):
                     setattr(self.adapters[adapter].max_retries, adapter_property, new_value)
+
+    def create_url(self, url):
+        if self.always_relative_url:
+            target_url = f"{self.base_url.rstrip('/')}/{url.lstrip('/')}"
+        else:
+            target_url = urljoin(self.base_url, url)
+        return target_url
+
+    def request(self, method, url, *args, **kwargs):
+        url = self.create_url(url)
+        return super().request(method, url, *args, **kwargs)
+
+    def prepare_request(self, request, *args, **kwargs):
+        request.url = self.create_url(request.url)
+        return super().prepare_request(request, *args, **kwargs)
+
+    @property
+    def always_relative_url(self):
+        return self._session_params.always_relative_url
+
+    @always_relative_url.setter
+    def always_relative_url(self, value: bool) -> None:
+        try:
+            self._session_params.always_relative_url = value
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
 
     @property
     def timeout(self):
@@ -274,7 +310,7 @@ class RestSession(BaseUrlSession):
         :return: None
         """
         try:
-            if not (isinstance(retry_method_list, list) or isinstance(retry_method_list, tuple)):
+            if not isinstance(retry_method_list, (list, tuple)):
                 retry_method_list = [retry_method_list]
             self._session_params.retry_method_list = retry_method_list
             self._update_mounted_adapters("allowed_methods", retry_method_list)

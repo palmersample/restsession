@@ -243,6 +243,8 @@ class SessionParamModel(BaseModel):
     redirect_header_hook: Optional[Callable] = None
     response_hooks: Optional[list[Callable]] = SESSION_DEFAULTS["response_hooks"]
     request_exception_hook: Optional[Callable] = SESSION_DEFAULTS["request_exception_hook"]
+    safe_arguments: bool = SESSION_DEFAULTS["safe_arguments"]
+    always_relative_url: bool = SESSION_DEFAULTS["always_relative_url"]
 
     @field_validator("base_url")
     @classmethod
