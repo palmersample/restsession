@@ -497,6 +497,7 @@ class SessionParamModel(BaseModel):
                               arbitrary_types_allowed=True)
 
     base_url: Optional[str] = SESSION_DEFAULTS["base_url"]
+    always_relative_url: bool = SESSION_DEFAULTS["always_relative_url"]
     auth: Optional[Union[tuple[str, str], AuthBase]] = SESSION_DEFAULTS["auth"]
     auth_headers: dict = SESSION_DEFAULTS["auth_headers"]
     backoff_factor: float = SESSION_DEFAULTS["backoff_factor"]

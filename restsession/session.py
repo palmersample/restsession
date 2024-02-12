@@ -21,7 +21,7 @@ from urllib3 import disable_warnings
 from urllib3.util.retry import Retry
 from .defaults import SESSION_DEFAULTS
 # from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
-from .newmodels import SessionParamModel
+from .models import SessionParamModel
 from .exceptions import (InvalidParameterError, InitializationError)
 
 logger = logging.getLogger(__name__)
