@@ -3,8 +3,7 @@ Default hooks for response handling. These are separated from the main module
 to improve readability of it as well as the hook definitions.
 """
 import logging
-from typing import Optional
-from urllib.parse import urlparse
+from ssl import SSLError
 from requests.exceptions import (HTTPError as RequestHTTPError,
                                  ConnectionError as RequestConnectionError,
                                  InvalidJSONError as RequestInvalidJSONError,
@@ -15,7 +14,7 @@ from requests.exceptions import (HTTPError as RequestHTTPError,
                                  SSLError as RequestSslError,
                                  RequestException)
 from urllib3.exceptions import (MaxRetryError, SSLError as UrllibSslError)
-from ssl import SSLError
+
 
 logger = logging.getLogger(__name__)
 

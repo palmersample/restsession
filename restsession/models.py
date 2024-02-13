@@ -8,9 +8,11 @@ a main "entry" class to be used for full model validation.
 import logging
 from typing import (Optional,
                     Union,
+                    Annotated,
                     Callable)
 from pydantic import (BaseModel,
                       ConfigDict,
+                      AfterValidator,
                       TypeAdapter,
                       AnyHttpUrl,
                       StrictBool,
@@ -491,15 +493,17 @@ logger = logging.getLogger(__name__)
 #     class.
 #     """
 
+AnyUrlString = Annotated[AnyHttpUrl, AfterValidator(str)]
+
 class SessionParamModel(BaseModel):
     # Always validate when a value is assigned (or updated)
     model_config = ConfigDict(validate_assignment=True,
                               arbitrary_types_allowed=True)
 
-    base_url: Optional[str] = SESSION_DEFAULTS["base_url"]
+    base_url: Optional[AnyUrlString] = SESSION_DEFAULTS["base_url"]
     always_relative_url: bool = SESSION_DEFAULTS["always_relative_url"]
     auth: Optional[Union[tuple[str, str], AuthBase]] = SESSION_DEFAULTS["auth"]
-    auth_headers: dict = SESSION_DEFAULTS["auth_headers"]
+    auth_headers: Optional[dict[str, str]] = SESSION_DEFAULTS["auth_headers"]
     backoff_factor: float = SESSION_DEFAULTS["backoff_factor"]
     headers: Optional[dict[str, str]] = SESSION_DEFAULTS["headers"]
     max_reauth: int = SESSION_DEFAULTS["max_reauth"]
@@ -511,13 +515,14 @@ class SessionParamModel(BaseModel):
     retries: int = SESSION_DEFAULTS["retries"]
     retry_method_list: list[str] = SESSION_DEFAULTS["retry_method_list"]
     retry_status_code_list: Union[list[int], tuple[int]] = SESSION_DEFAULTS["retry_status_code_list"]
+    safe_arguments: bool = SESSION_DEFAULTS["safe_arguments"]
     timeout: Union[float, tuple[float, float]] = SESSION_DEFAULTS["timeout"]
     tls_verify: bool = SESSION_DEFAULTS["verify"]
 
-    @field_validator("base_url")
-    @classmethod
-    def base_url_must_be_a_url(cls, url_val: str):
-        url_validator = TypeAdapter(AnyHttpUrl)
-        if url_val is not None and not url_validator.validate_python(url_val):
-            raise ValueError(f"Invalid URL '{url_val}' specified for base_url")
-        return url_val
+    # @field_validator("base_url")
+    # @classmethod
+    # def base_url_must_be_a_url(cls, url_val: str):
+    #     url_validator = TypeAdapter(AnyHttpUrl)
+    #     if url_val is not None and not url_validator.validate_python(url_val):
+    #         raise ValueError(f"Invalid URL '{url_val}' specified for base_url")
+    #     return url_val

@@ -2,6 +2,7 @@
 Pytest configuration for this test suite.
 """
 import logging
+import re
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import socket
 from threading import Thread
@@ -106,6 +107,7 @@ def reset_generic_handler():
     :return: None
     """
     MockServerRequestHandler.sleep_time = 0
+    MockServerRequestHandler.url_path = None
 
 
 @pytest.fixture(scope="module")
@@ -256,6 +258,16 @@ class BaseHttpServer:
         """
         self.mock_server.RequestHandlerClass.max_retries = max_retries
 
+    def set_server_target_path(self, target_path):
+        """
+        Set a target URL path for the request handler class. Used for testing
+        the base and explicit URLs for a request.
+
+        :param target_path: Path the handler should respond to
+        :return: None
+        """
+        self.mock_server.RequestHandlerClass.url_path = target_path
+
 
 class MockServerRequestHandler(BaseHTTPRequestHandler):
     """
@@ -266,6 +278,7 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
     # pylint: disable=invalid-name, useless-return
     server_address = None
     sleep_time = 0
+    url_path = None
     # sleep_time = 0
     # request_count = 0
     # received_headers = None
@@ -278,17 +291,26 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
 
         :return: None
         """
-        if content_len := int(self.headers.get('content-length', 0)):
+        if content_len := int(self.headers.get('content-length', 0)) > 0:
             received_body = self.rfile.read(content_len).decode("utf-8")
         else:
             received_body = {}
 
-        logger.debug("Received request")
+        logger.debug("Received request to %s", self.path)
         logger.debug("Received headers: %s", self.headers)
         logger.debug("Received body: %s", received_body)
         if getattr(self.__class__, "sleep_time", None):
             time.sleep(self.__class__.sleep_time)
-        self.send_response(200)
+
+        if target_path := getattr(self.__class__, "url_path", None):
+            logger.debug("URL Path: %s", target_path)
+            if re.match(target_path, self.path):
+                self.send_response(200)
+            else:
+                self.send_response(404)
+
+        else:
+            self.send_response(200)
         self.send_header(
             "Content-Type", "application/json; charset=utf-8"
         )
@@ -375,7 +397,7 @@ class RedirectMockServerRequestHandler(MockServerRequestHandler):
         """
         logger.debug("Received request")
         logger.debug("First server headers: %s", self.headers)
-        if content_len := int(self.headers.get('content-length', 0)):
+        if content_len := int(self.headers.get('content-length', 0)) > 0:
             received_body = self.rfile.read(content_len).decode("utf-8")
         else:
             received_body = {}

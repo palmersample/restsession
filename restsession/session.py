@@ -46,13 +46,23 @@ class SessionRequestAdapter(HTTPAdapter):
 
 
 class ExtendedSession(RequestSession):
+    """
+    Simple class to extend requests.Session and define attributes needed for
+    future inheritance and subsequent super() calls.
+    """
     def __init__(self):
+        """
+        Initialize the object. Define attributes needed for subclasses and
+        then call super().__init__() so children can immediately super to
+        initialize the REST Session object.
+        """
+
+        # _session_params is a reference to the parameter model
         self._session_params = SessionParamModel
         super().__init__()
 
 
-# class RestSession(RequestSession):
-class RestSession(ExtendedSession):
+class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
     """
     Main HTTP Session class. On init, create a new HTTP base URL session for the
     object, generate all needed settings for timeout/retries and configure
@@ -123,28 +133,107 @@ class RestSession(ExtendedSession):
                     setattr(self.adapters[adapter].max_retries, adapter_property, new_value)
 
     def create_url(self, url):
-        if self.always_relative_url:
-            target_url = f"{self.base_url.rstrip('/')}/{url.lstrip('/')}"
+        """
+        If the session is configured to use a base URL, prepare the target
+        URL for the request.
+
+        If "always_relative_url" is True, ensure a trailing slash is added
+        to the base URL and any leading slash is removed from the URL
+        component. Then, return the result of urllib.parse.urljoin.
+
+        If always_relative is False, return the result of a urljoin and
+        use the "default rules".
+
+        :param url: URL provided for the request
+        :return: Formatted URL (full or base/relative)
+        """
+
+        if self.base_url and self.always_relative_url:
+            request_url = urljoin(f"{self.base_url.rstrip('/')}/",
+                                  url.lstrip("/"))
         else:
-            target_url = urljoin(self.base_url, url)
-        return target_url
+            request_url =  urljoin(self.base_url, url)
+
+        return request_url
 
     def request(self, method, url, *args, **kwargs):
+        """
+        Override the requests.request method to prepare the URL before calling
+        super().request().
+
+        :param method: HTTP Method for the request
+        :param url: Target URL for the request
+        :param args: Additional non-keyword args for the request
+        :param kwargs: Additional keyword args for the request
+        :return: super().request() with supplied args
+        """
         url = self.create_url(url)
         return super().request(method, url, *args, **kwargs)
 
     def prepare_request(self, request, *args, **kwargs):
+        """
+        Override the requests.prepare_request method to prepare the URL
+        before calling super().prepare_request().
+
+        :param request: Request to prepare
+        :param args: Additional non-keyword args for the request
+        :param kwargs: Additional keyword args for the request
+        :return: super().prepare_request() with supplied args
+        """
         request.url = self.create_url(request.url)
         return super().prepare_request(request, *args, **kwargs)
 
     @property
     def always_relative_url(self):
+        """
+        Currently configured value to specify if all URLs are relative
+
+        :return: Relative URL flag from _session_params
+        """
         return self._session_params.always_relative_url
 
     @always_relative_url.setter
     def always_relative_url(self, value: bool) -> None:
+        """
+        If True, assume that every URL provided for a Base URL session is
+        relative to the base, bypassing urllib.parse.urljoin's behavior
+        and simplifying the user experience.
+
+        :param value: Whether every path should be relative to the base
+        :return: None
+        :raises: ValidationError if a non-bool value is provided
+        """
         try:
             self._session_params.always_relative_url = value
+        except ValidationError as err:
+            raise InvalidParameterError(err) from err
+
+    @property
+    def safe_arguments(self):
+        """
+        Not yet implemented - intent is that if this attribute is True, do not
+        raise ValidationError for invalid arguments, but instead disregard the
+        invalid value and revert to the previously-defined value instead.
+
+        Currently configured value of the safe_argument operating mode.
+
+        :return: Safe argument setting from _session_params
+        """
+        return self._session_params.safe_arguments
+
+    @safe_arguments.setter
+    def safe_arguments(self, value: bool) -> None:
+        """
+        Not yet implemented - intent is that if this attribute is True, do not
+        raise ValidationError for invalid arguments, but instead disregard the
+        invalid value and revert to the previously-defined value instead.
+
+        :param value: Whether to enable safe operating mode
+        :return: None
+        :raises: ValidationError if non-bool is provided
+        """
+        try:
+            self._session_params.safe_arguments = value
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
