@@ -39,11 +39,6 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: Generate artifact name
-      id: generate-name
-      run: |
-        echo "::set-output name=artifact::pytest-log.${{ github.run_id }}.html"
-
     - name: Test with pytest
       run: |
         pytest --doctest-modules --html=tests/logs/pytest-log.html --self-contained-html -v tests
@@ -51,5 +46,5 @@ jobs:
     - name: Archive pytest results
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.generate-name.outputs.artifact }}
+        name: pytest-log-${{ github.job }}
         path: tests/logs/pytest-log.html
