@@ -14,7 +14,7 @@ from .metaclass import Singleton
 logger = logging.getLogger(__name__)
 
 
-class RestSessionSingleton(RestSession, metaclass=Singleton):  # , metaclass=Singleton):
+class RestSessionSingleton(RestSession, metaclass=Singleton):
     """
     Singleton class definition. The only method override is for __exit__ to
     provide a cleanup of the _instances class attribute, effectively removing

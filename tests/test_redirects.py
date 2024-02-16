@@ -1,118 +1,109 @@
+"""
+Test functions for request redirects
+"""
+# pylint: disable=redefined-outer-name, line-too-long
 import logging
-from BaseHttpServer import BaseHttpServer
-from pyats import aetest
-# from restsession import HttpSessionClass, HttpSessionSingletonClass
-from requests.exceptions import TooManyRedirects
-from http.server import BaseHTTPRequestHandler
-import re
+import pytest
+import requests.exceptions
+import requests.utils
 
 logger = logging.getLogger(__name__)
 
 
-class TestRequestRedirects(BaseHttpServer):
+pytestmark = pytest.mark.redirects
 
-    @aetest.test
-    def test_too_many_redirects(self, url_path, request_redirect_count):
-        class MockServerRequestHandler(BaseHTTPRequestHandler):
-            server_address = None
-            request_count = 0
-            redirect_count = 0
 
-            def do_GET(self):
-                if re.match(f"/{url_path}", self.path):
-                    self.__class__.request_count += 1
-                    self.__class__.redirect_count += 1
+@pytest.fixture
+def request_redirect_count():
+    """
+    Fixture to define the count of request redirects.
 
-                    next_server = f"http://{self.__class__.server_address}/{url_path}"
+    :return: int - number of redirects
+    """
+    return 3
 
-                    self.send_response(301)
-                    self.send_header(
-                        "Content-Type", "application/json; charset=utf-8"
-                    )
-                    self.send_header("Location", next_server)
-                    self.end_headers()
-                return
 
-        test_server = self.start_mock_server(MockServerRequestHandler)
-        test_url = f"http://{MockServerRequestHandler.server_address}/{url_path}"
+@pytest.fixture(params=[301, 302, 303, 307, 308])
+def redirect_response_code(request):
+    """
+    Fixture to test various redirect response codes.
 
-        # Expected redirect should be the configured retry count + 1, as the
-        # first request hits and then receives a 301. After experiencing
-        # (request_redirect_count) responses of 301, the exception will be raised.
-        # Each request hitting the server will increment the redirect counter
-        expected_redirect_count = request_redirect_count + 1
+    :param request: pytest fixture param
+    :return: next response code in the fixture param list
+    """
+    yield request.param
 
-        test_class = self.parameters["test_class"]
 
-        if hasattr(test_class, "_instances"):
-            test_class._instances = {}
+def test_successful_redirect(test_class,
+                             request_method,
+                             redirect_response_code,
+                             request_redirect_count,
+                             redirect_mock_server):
+    """
 
-        test_instance = test_class(max_redirect=request_redirect_count)
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param redirect_response_code: Fixture for the mock server response code
+    :param request_redirect_count: Fixture for the number of redirects
+    :param redirect_mock_server: Fixture for the redirect mock server
+    :return: None
+    """
 
-        try:
-            test_instance.get(test_url)
-        except TooManyRedirects:
-            logger.info("Caught expected TooManyRedirect exception.")
-            # pass
-            # self.passed()
-        except Exception as err:
-            self.failed(f"Unexpected exception was raised:\n{err}")
-        finally:
-            self.stop_mock_server(test_server)
+    # Expected redirect should be the configured redirect count, as a
+    # 200 should be returned once the count is reached.
+    redirect_mock_server.set_handler_redirect(next_server=redirect_mock_server.url,
+                                              max_redirect=request_redirect_count)
+    redirect_mock_server.set_handler_response_code(response_code=redirect_response_code)
 
-        assert MockServerRequestHandler.redirect_count == expected_redirect_count, \
-            f"Expected {expected_redirect_count} redirects, " \
-            f"server received {MockServerRequestHandler.redirect_count}"
+    with test_class() as class_instance:
+        class_instance.max_redirects = request_redirect_count
+        logger.info(class_instance.max_redirects)
 
-    @aetest.test
-    def test_max_redirects(self, url_path, request_redirect_count):
-        class MockServerRequestHandler(BaseHTTPRequestHandler):
-            server_address = None
-            request_count = 0
-            redirect_count = 0
+        request_response = class_instance.request(request_method, redirect_mock_server.url)
+        server_redirect_count = redirect_mock_server.mock_server.RequestHandlerClass.redirect_count
+        logger.error("SERVER COUNT: %s", server_redirect_count)
 
-            def do_GET(self):
-                if re.match(f"/{url_path}", self.path):
-                    if self.__class__.request_count < expected_redirect_count:
-                        self.__class__.request_count += 1
-                        self.__class__.redirect_count += 1
+        assert server_redirect_count == request_redirect_count, \
+            f"Expected {request_redirect_count} retries, " \
+            f"server received {server_redirect_count}"
 
-                        next_server = f"http://{self.__class__.server_address}/{url_path}"
+        assert request_response.ok, \
+            f"Expected a successful response code, got: {request_response.status_code}"
 
-                        self.send_response(301)
-                        self.send_header(
-                            "Content-Type", "application/json; charset=utf-8"
-                        )
-                        self.send_header("Location", next_server)
-                    else:
-                        self.__class__.request_count += 1
-                        self.send_response(200)
-                    self.end_headers()
-                return
 
-        test_server = self.start_mock_server(MockServerRequestHandler)
-        test_url = f"http://{MockServerRequestHandler.server_address}/{url_path}"
+def test_too_many_redirects(test_class,
+                            request_method,
+                            redirect_response_code,
+                            request_redirect_count,
+                            redirect_mock_server):
+    """
 
-        expected_redirect_count = request_redirect_count
-        expected_request_count = request_redirect_count + 1
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param redirect_response_code: Fixture for the mock server response code
+    :param request_redirect_count: Fixture for the number of redirects
+    :param redirect_mock_server: Fixture for the redirect mock server
+    :return: None
+    """
+    # Expected redirect should be the configured redirect count + 1, as a
+    # redirect should be sent until the end - no successful response will
+    # be encountered.
+    expected_redirect_count = request_redirect_count + 1
+    redirect_mock_server.set_handler_redirect(next_server=redirect_mock_server.url,
+                                              max_redirect=expected_redirect_count)
+    redirect_mock_server.set_handler_response_code(response_code=redirect_response_code)
 
-        test_class = self.parameters["test_class"]
+    with test_class() as class_instance:
+        class_instance.max_redirects = request_redirect_count
 
-        if hasattr(test_class, "_instances"):
-            test_class._instances = {}
+        with pytest.raises(requests.exceptions.TooManyRedirects) as exc_info:
+            logger.debug("TooManyRedirects raised")
+            class_instance.request(request_method, redirect_mock_server.url)
+        server_redirect_count = redirect_mock_server.mock_server.RequestHandlerClass.redirect_count
 
-        test_instance = test_class(max_redirect=request_redirect_count)
+        assert server_redirect_count == expected_redirect_count, \
+            f"Expected {request_redirect_count} retries, " \
+            f"server received {server_redirect_count}"
 
-        try:
-            test_instance.get(test_url)
-        except Exception as err:
-            self.failed(f"Unexpected exception was raised:\n{err}")
-        finally:
-            self.stop_mock_server(test_server)
-
-        assert MockServerRequestHandler.request_count == expected_request_count, \
-            f"Expected {expected_request_count} requests, " \
-            f"server received {MockServerRequestHandler.request_count}"
-        assert MockServerRequestHandler.redirect_count == expected_redirect_count, \
-            f"Expected {expected_redirect_count} redirects, " \
-            f"server received {MockServerRequestHandler.redirect_count}"
+        assert not 200 <= exc_info.value.response.status_code <= 299, \
+            f"Expected a successful response code, got: {exc_info.value.response.status_code}"
