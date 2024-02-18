@@ -29,17 +29,6 @@ def request_url_path():
     """
     return "/api/request/path"
 
-
-# @pytest.fixture(params=[301, 302, 303, 307, 308])
-# def redirect_response_code(request):
-#     """
-#     Fixture to test various redirect response codes.
-#
-#     :param request: pytest fixture param
-#     :return: next response code in the fixture param list
-#     """
-#     yield request.param
-
 @pytest.mark.parametrize("test_class",
                          [
                              pytest.param(requests_toolbelt.sessions.BaseUrlSession,
@@ -136,6 +125,7 @@ def test_base_url_bad_urljoin(test_class,
     base_url = f"{target_server.url.rstrip('/')}{URL_REGEX.match(request_url_path).groups()[0]}"
     target_path = URL_REGEX.match(request_url_path).groups()[1]
     with test_class(base_url=base_url) as class_instance:
+        class_instance.always_relative_url = False
         with pytest.raises(requests.exceptions.HTTPError):
             class_instance.request(request_method, target_path)
 

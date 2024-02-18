@@ -35,7 +35,7 @@ class SessionParamModel(BaseModel):
     base_url: Optional[AnyUrlString] = SESSION_DEFAULTS["base_url"]
     always_relative_url: bool = SESSION_DEFAULTS["always_relative_url"]
     auth: Optional[Union[tuple[str, str], AuthBase]] = SESSION_DEFAULTS["auth"]
-    auth_headers: Optional[dict[str, str]] = SESSION_DEFAULTS["auth_headers"]
+    auth_headers: Optional[list[str]] = SESSION_DEFAULTS["auth_headers"]
     backoff_factor: float = SESSION_DEFAULTS["backoff_factor"]
     headers: Optional[dict[str, str]] = SESSION_DEFAULTS["headers"]
     max_reauth: int = SESSION_DEFAULTS["max_reauth"]
