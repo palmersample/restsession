@@ -10,6 +10,12 @@ You might find the **RestSessionSingleton** class useful if you have modules in 
 
 This project exists because I frequently create projects that use `requests` in the same manner, and I got tired of repeating myself :smiley:
 
+# Installation
+
+This project has been uploaded to PyPi. To install, use the Python `pip` command:
+
+`pip install restsession`
+
 # Usage
 
 Instances can be created explicitly or using a context manager. All methods from the requests library should be available for use.
