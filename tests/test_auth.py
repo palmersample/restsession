@@ -415,7 +415,15 @@ def test_basic_auth_header_removed_on_redirect(test_class,
         assert "Authorization" not in received_headers, \
             "Authorization header was returned by the second server"
 
-
+@pytest.mark.parametrize("test_class",
+                         [
+                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
+                                          marks=pytest.mark.xfail(
+                                              reason="Requests does not have auth_headers attribute")
+                                          ),
+                             restsession.RestSession,
+                             restsession.RestSessionSingleton
+                         ])
 def test_custom_auth_header_removed_on_redirect(test_class,
                                                 request_method,
                                                 generic_mock_server,
@@ -439,8 +447,15 @@ def test_custom_auth_header_removed_on_redirect(test_class,
         auth_server = redirect_mock_server
         target_server = generic_mock_server
         auth_server.set_handler_redirect(next_server=target_server.url, max_redirect=1)
+        class_instance.headers.update({custom_auth_header: custom_auth_token_one})
+        try:
+            # class_instance.remove_headers_on_redirect.append(custom_auth_header)
+            class_instance.remove_headers_on_redirect = custom_auth_header
+        except AttributeError as err:
+            pytest.xfail(
+                f"Class being tested does not support the 'remove_headers_on_redirect' attribute: {err}"
+            )
 
-        class_instance.auth_headers = {custom_auth_header: custom_auth_token_one}
 
         auth_response = class_instance.request(request_method, auth_server.url)
         received_headers = auth_response.json().get("headers")
@@ -550,8 +565,14 @@ def test_custom_auth_header_not_removed_on_same_origin_redirect(test_class,
     with test_class() as class_instance:
         target_server = redirect_mock_server
         target_server.set_handler_redirect(next_server=target_server.url, max_redirect=1)
-
-        class_instance.auth_headers = {custom_auth_header: custom_auth_token_one}
+        class_instance.headers.update({custom_auth_header: custom_auth_token_one})
+        try:
+            # class_instance.remove_headers_on_redirect.append(custom_auth_header)
+            class_instance.remove_headers_on_redirect = custom_auth_header
+        except AttributeError as err:
+            pytest.xfail(
+                f"Class being tested does not support the 'remove_headers_on_redirect' attribute: {err}"
+            )
         auth_response = class_instance.request(request_method, target_server.url)
         received_headers = auth_response.json().get("headers")
         logger.debug("Test class received response headers:\n%s", received_headers)

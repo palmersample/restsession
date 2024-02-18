@@ -30,16 +30,15 @@ DEFAULT_HEADERS = {
     "Connection": "keep-alive"
 }
 
-DEFAULT_HEADER_HOOKS = None
 DEFAULT_EXCEPTION_HOOKS = default_request_exception_hook
-DEFAULT_RESPONSE_HOOKS = []
+DEFAULT_RESPONSE_HOOKS = ()
 
 SESSION_DEFAULTS = MappingProxyType(
     {
         "headers": DEFAULT_HEADERS,
-        "auth_headers": {},
+        "auth_headers": [],
         "auth": None,
-        "timeout": 5,
+        "timeout": 3,
         "retries": 3,
         "max_redirects": 16,
         "backoff_factor": 0.3,
@@ -58,10 +57,9 @@ SESSION_DEFAULTS = MappingProxyType(
         "base_url": None,
         "verify": True,
         "max_reauth": 3,
-        "redirect_header_hook": DEFAULT_HEADER_HOOKS,
         "request_exception_hook": DEFAULT_EXCEPTION_HOOKS,
         "response_hooks": DEFAULT_RESPONSE_HOOKS,
         "safe_arguments": True,
-        "always_relative_url": False
+        "always_relative_url": True
     }
 )

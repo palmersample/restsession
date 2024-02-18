@@ -43,8 +43,8 @@ jobs:
       run: |
         pytest --doctest-modules --html=tests/logs/pytest-log.html --self-contained-html -v tests
 
-    - name: Archive pytest results
-      uses: actions/upload-artifact@v4
-      with:
-        name: pytest-log-${{ github.job }}
-        path: tests/logs/pytest-log.html
+#    - name: Archive pytest results
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: pytest-log-${{ github.job }}
+#        path: tests/logs/pytest-log.html

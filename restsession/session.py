@@ -490,74 +490,6 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
-    #
-    # There is really no reason to send the username and password back as
-    # an object attribute in normal operation. So what if the auth failed?
-    # Just fix your auth issue and go on. You have username and password in
-    # the code you used to instantiate this class!
-    #
-    # @property
-    # def username(self):
-    #     """
-    #     Currently configured username for HTTP Basic Auth
-    #
-    #     :return: Username from _session_params.username
-    #     """
-    #     if isinstance(self.auth, tuple):
-    #         username = self.auth[0]
-    #     else:
-    #         username = None
-    #
-    #     return username
-    #
-    # @username.setter
-    # def username(self, username):
-    #     """
-    #     Update the username for HTTP Basic auth. Once a username and password
-    #     have both been configured, Basic auth will be configured for the
-    #     session instance.
-    #
-    #     :param username: Username for HTTP Basic Auth
-    #     :return: None
-    #     """
-    #     try:
-    #         if isinstance(self.auth, tuple):
-    #             self._session_params.auth = (username, self.auth[1])
-    #         else:
-    #             self._session_params.auth = (username, "")
-    #     except ValidationError as err:
-    #         raise InvalidParameterError(err) from err
-    #
-    # @property
-    # def password(self):
-    #     """
-    #     Currently configured password for HTTP Basic Auth
-    #
-    #     :return: Password from _session_params.username
-    #     """
-    #     if isinstance(self.auth, tuple):
-    #         password = self.auth[1]
-    #     else:
-    #         password = None
-    #     return password
-    #
-    # @password.setter
-    # def password(self, password):
-    #     """
-    #     Update the password for HTTP Basic auth. Once configured along with
-    #     a username, Basic auth will be configured for the session instance.
-    #
-    #     :param password: Password for HTTP Basic Auth
-    #     :return: None
-    #     """
-    #     try:
-    #         if isinstance(self.auth, tuple):
-    #             self._session_params.auth = (self.auth[0], password)
-    #         else:
-    #             self._session_params.auth = ("", password)
-    #     except ValidationError as err:
-    #         raise InvalidParameterError(err) from err
-
     @property
     def auth(self):
         """
@@ -597,9 +529,9 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
     @headers.setter
     def headers(self, headers: Optional[dict[str, str]] = MappingProxyType({})):
         """
-        Update the HTTP headers for the current session. This should NOT be
-        used for authentication headers, as these will not be removed on a
-        cross-domain redirect. Use the auth_headers attribute for those.
+        Update the HTTP headers for the current session. For any custom auth
+        headers to be removed on cross-origin redirect, add the header name
+        to "remove_headers_on_redirect"
 
         :param headers: Dictionary of additional headers for the session.
         :return: None
@@ -607,11 +539,10 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         try:
             self._session_params.headers = headers
         except ValidationError as err:
-            logger.info("Invalid param raised: %s", headers)
             raise InvalidParameterError(err) from err
 
     @property
-    def auth_headers(self):
+    def remove_headers_on_redirect(self):
         """
         Currently configured custom authentication/authorization headers.
 
@@ -619,20 +550,19 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         """
         return self._session_params.auth_headers
 
-    @auth_headers.setter
-    def auth_headers(self, headers: Optional[dict[str, str]] = MappingProxyType({})):
+    @remove_headers_on_redirect.setter
+    def remove_headers_on_redirect(self, headers: Optional[list[str]] = None):
         """
-        Add custom auth headers (X-Auth-Token, etc) for the request session
-        object. The differentiator with auth_headers is that each custom
-        auth header provided here will be added to the redirect hook which
-        will remove them on a cross-domain redirect.
+        Add custom auth headers (X-Auth-Token, etc) to be removed on cross-domain
+        redirect for the request session object.
 
-        :param headers: Dictionary of custom auth headers for the session
+        :param headers: List of keys to remove from headers on redirect
         :return: None
         """
         try:
+            if not isinstance(headers, list):
+                headers = [headers]
             self._session_params.auth_headers = headers
-            self.headers.update(headers)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -687,26 +617,27 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         :return: remove_auth_header_on_redirect
         """
 
-        def remove_auth_header_on_redirect(response, **kwargs):  # pylint: disable=unused-argument
+        def remove_headers_on_redirect(response, **kwargs):  # pylint: disable=unused-argument
             """
             Hook used when a redirect response is received. If redirected to a
-            different host and self.auth_headers is defined, remove any
-            defined auth_headers before returning the response object.
+            different host and self.remove_headers_on_redirect is defined, remove any
+            defined custom headers before returning the response object.
 
             :param response: requests Response object
             :param kwargs: Any arguments passed to the response hook by requests
             :return: requests Response object without custom auth headers
             """
-            if response.is_redirect and self.auth_headers and \
+            if response.is_redirect and self.remove_headers_on_redirect and \
                     (urlparse(response.request.url).netloc !=
                      urlparse(response.headers["Location"]).netloc):
                 # Only strip the headers when being redirected to a different host
                 response.request.headers = {
-                    k: v for k, v in response.request.headers.items() if k not in self.auth_headers
+                    k: v for k, v in response.request.headers.items()
+                        if k not in self.remove_headers_on_redirect
                 }
             return response
 
-        self._session_params.redirect_header_hook = remove_auth_header_on_redirect
+        self._session_params.redirect_header_hook = remove_headers_on_redirect
         return self._session_params.redirect_header_hook
 
     @property
@@ -717,26 +648,6 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         :return: session response hook for exceptions
         """
         return self._session_params.request_exception_hook
-
-    # @request_exception_hook.setter
-    # def request_exception_hook(self, hook):
-    #     """
-    #     Set (or replace) the exception hook to handle HTTP errors.
-    #
-    #     By default, the hook will re-raise various exceptions generated
-    #     by the requests library or urllib3; however, it may be desirable to
-    #     replace this hook if custom exceptions should be raised.
-    #
-    #     This hook will be the LAST hook raised after a response, after the
-    #     redirect hook and any custom hooks.
-    #
-    #     :param headers: Function reference to become the exception handler hook
-    #     :return: None
-    #     """
-    #     try:
-    #         self._session_params.request_exception_hook = hook
-    #     except ValidationError as err:
-    #         raise InvalidParameterError(err) from err
 
     @property
     def response_hooks(self):
@@ -765,17 +676,8 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         try:
             # if not isinstance(hooks, list):
             #     hooks = [hooks]
-
-            # self._session_params.response_hooks = self._session_params.response_hooks + hooks
             self._session_params.response_hooks.append(hooks)
             self.update_response_hooks()
-            # self.hooks = {
-            #     "response": [
-            #         self.redirect_header_hook,
-            #         self.response_hooks,
-            #         self.request_exception_hook
-            #     ]
-            # }
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -795,12 +697,11 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         # The final hook will always be the request exception hook.
         self.hooks["response"].append(self.request_exception_hook)
 
-
     def clear_response_hooks(self):
         """
         Clear all user-defined response hooks.
 
         :return: None
         """
-        self._session_params.response_hooks = []
+        self._session_params.response_hooks = ()
         self.hooks = {"response": None}
