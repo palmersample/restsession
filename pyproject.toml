@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "restsession"
-version = "0.0.9"
+version = "0.1.0"
 authors = [
   { name="Palmer Sample", email="palmer@palmersample.net" },
 ]
@@ -18,9 +18,9 @@ classifiers = [
 ]
 
 dependencies = [
-    'pydantic==2.6.1',
-    'requests==2.31.0',
-    'urllib3 == 2.2.0',
+    'pydantic~=2.6.1',
+    'requests~=2.32.0',
+    'urllib3~=2.2.2',
 ]
 
 [project.urls]
