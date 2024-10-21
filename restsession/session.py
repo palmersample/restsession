@@ -137,22 +137,26 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         If the session is configured to use a base URL, prepare the target
         URL for the request.
 
-        If "always_relative_url" is True, ensure a trailing slash is added
-        to the base URL and any leading slash is removed from the URL
-        component. Then, return the result of urllib.parse.urljoin.
+        To reduce the likelihood of encountering an InvalidSchema exception
+        due to "No connection adapters were found...", help the coder by
+        assuming that:
+          - If a base URL is defined; AND
+          - The desired URL does not start with / or ./; THEN
+          - Prepend ./ to the requested URL
 
-        If always_relative is False, return the result of a urljoin and
-        use the "default rules".
+        This is a bit of a hack to save the user from the nuance of RFC3986
+        and urllib.parse's urljoin() method when they really just want to
+        request a URL relative to the base and forget to start with "./"
 
         :param url: URL provided for the request
         :return: Formatted URL (full or base/relative)
         """
+        if self.base_url:
+            if not url.startswith(self.base_url):
+                if not url.startswith("/") or not url.startswith("./"):
+                    url = f"./{url}"
 
-        if self.base_url and self.always_relative_url:
-            request_url = urljoin(f"{self.base_url.rstrip('/')}/",
-                                  url.lstrip("/"))
-        else:
-            request_url =  urljoin(self.base_url, url)
+        request_url = urljoin(self.base_url, url)
 
         return request_url
 
