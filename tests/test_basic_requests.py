@@ -29,6 +29,8 @@ def request_url_path():
     """
     return "/api/request/path"
 
+
+
 @pytest.mark.parametrize("test_class",
                          [
                              pytest.param(requests_toolbelt.sessions.BaseUrlSession,
@@ -114,6 +116,12 @@ def test_base_url_bad_urljoin(test_class,
     """
     Test request to an explicit (non-baseurl) destination
 
+    The base URL will have the trailing slash stripped before instantiating
+    the test class, and the relative URL will be provided with no leading
+    slash or relative location ("/" or "./"). The pydantic model should
+    create the trailing slash, and the create_url method should properly
+    prepend the relative location indicator.
+
     :param test_class: Fixture of the class to test
     :param generic_mock_server: Fixture for the generic mock server
     :param request_method: Fixture of the HTTP verb to test
@@ -123,11 +131,13 @@ def test_base_url_bad_urljoin(test_class,
     target_server = generic_mock_server
     target_server.set_server_target_path(target_path=request_url_path)
     base_url = f"{target_server.url.rstrip('/')}{URL_REGEX.match(request_url_path).groups()[0]}"
-    target_path = URL_REGEX.match(request_url_path).groups()[1]
+    target_path = URL_REGEX.match(request_url_path).groups()[1].lstrip("/")
+    logger.info("Pre-instance base URL: %s", base_url)
+    logger.info("Target path: %s", target_path)
     with test_class(base_url=base_url) as class_instance:
-        class_instance.always_relative_url = False
-        with pytest.raises(requests.exceptions.HTTPError):
-            class_instance.request(request_method, target_path)
+        logger.info("Instance base URL: %s", class_instance.base_url)
+        response = class_instance.request(request_method, target_path)
+        assert response.ok, f"Expected a success, got {response.status_code}"
 
 
 @pytest.mark.parametrize("test_class",

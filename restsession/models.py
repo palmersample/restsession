@@ -13,7 +13,8 @@ from typing import (Optional,
 from pydantic import (BaseModel,
                       ConfigDict,
                       AfterValidator,
-                      AnyHttpUrl)
+                      AnyHttpUrl,
+                      field_validator)
 from requests.auth import AuthBase
 from .defaults import SESSION_DEFAULTS
 
@@ -50,3 +51,11 @@ class SessionParamModel(BaseModel):
     safe_arguments: bool = SESSION_DEFAULTS["safe_arguments"]
     timeout: Union[float, tuple[float, float]] = SESSION_DEFAULTS["timeout"]
     tls_verify: bool = SESSION_DEFAULTS["verify"]
+
+    @field_validator("base_url")
+    @classmethod
+    def base_url_ends_with_slash(cls, v: Optional[AnyUrlString]) -> Optional[AnyUrlString]:
+        if v is not None:
+            if not v.endswith("/"):
+                v = f"{v}/"
+        return v
