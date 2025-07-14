@@ -151,10 +151,11 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         :param url: URL provided for the request
         :return: Formatted URL (full or base/relative)
         """
-        if self.base_url:
-            if not url.startswith(self.base_url):
-                if not url.startswith("/") or not url.startswith("./"):
-                    url = f"./{url}"
+        if self.always_relative_url and self.base_url:
+            if not url.startswith(("/", "./")):
+                url = f"./{url}"
+            elif url.startswith("/"):
+                url = f".{url}"
 
         request_url = urljoin(self.base_url, url)
 
@@ -171,7 +172,6 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         :param kwargs: Additional keyword args for the request
         :return: super().request() with supplied args
         """
-        url = self.create_url(url)
         return super().request(method, url, *args, **kwargs)
 
     def prepare_request(self, request, *args, **kwargs):
