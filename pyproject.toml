@@ -7,7 +7,7 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.8,<4.0"
+requires-python = ">=3.9,<4.0"
 dependencies = [
     "pydantic (~=2.6.1)",
     "requests (~=2.32.0)",
@@ -34,6 +34,13 @@ pythonpath = [
 addopts = [
     "--import-mode=importlib",
 ]
+
+
+[tool.poetry.group.test.dependencies]
+flake8 = "^7.3.0"
+pytest = "^8.4.1"
+pytest-html = "^4.1.1"
+requests-toolbelt = "^1.0.0"
 
 [project.urls]
 "Homepage" = "https://github.com/palmersample/restsession"
