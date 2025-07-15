@@ -11,6 +11,7 @@ on:
 
 env:
   DEV_PYTHON_VERSION: 3.12
+  TESTING_PYTHON_VERSIONS: ["3.9", "3.10", "3.11", "3.12"]
 
 jobs:
   linting:
@@ -44,7 +45,17 @@ jobs:
           # OPTIONAL - Report any recommendations from black
           # black . --check
 
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+          python-version: ${{ env.TESTING_PYTHON_VERSIONS }}
 
+    steps:
+      - name: Does this work?
+        run: |
+          echo ${{ matrix.python-version }}
 #  test:
 #    runs-on: ubuntu-latest
 #    strategy:
