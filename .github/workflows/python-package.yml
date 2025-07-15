@@ -14,35 +14,34 @@ env:
 
 jobs:
   linting:
-    linting:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Check out repo
-          uses: actions/checkout@v4
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
 
-        - name: Install Python ${{ env.DEV_PYTHON_VERSION }}
-          uses: actions/setup-python@v5
-          with:
-            python-version: ${{ env.DEV_PYTHON_VERSION }}
+      - name: Install Python ${{ env.DEV_PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEV_PYTHON_VERSION }}
 
-        - name: Load pip cache
-          uses: actions/cache@v4
-          with:
-            path: ~/.cache/pip
-            key: ${{ runner.os }}-pip
-            restore-keys: ${{ runner.os }}-pip
+      - name: Load pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip
+          restore-keys: ${{ runner.os }}-pip
 
-        - name: Install basic linters
-          run: python -m pip install black flake8 isort
+      - name: Install basic linters
+        run: python -m pip install black flake8 isort
 
-        - name: Lint all source files
-          run: |
-            # stop the build if there are Python syntax errors or undefined names
-            flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-            # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-            flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-            # OPTIONAL - Report any recommendations from black
-            # black . --check
+      - name: Lint all source files
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          # OPTIONAL - Report any recommendations from black
+          # black . --check
 
 
 #  test:
