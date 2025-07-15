@@ -50,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          python-version: ${{ env.TESTING_PYTHON_VERSIONS }}
+        python-version: ${{ env.TESTING_PYTHON_VERSIONS }}
 
     steps:
       - name: Does this work?
