@@ -42,8 +42,7 @@ jobs:
           which black
           which flake8
           which pylint
-          python -V
-
+          echo ${{ env.pythonLocation}}
 
       - name: Lint all source files
         run: |
