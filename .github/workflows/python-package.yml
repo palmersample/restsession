@@ -24,6 +24,12 @@ jobs:
         with:
           python-version: ${{ env.DEV_PYTHON_VERSION }}
 
+      - name: Where is Python
+        run: |
+          which python
+          which pip
+          python -V
+
       - name: Load pip cache
         uses: actions/cache@v4
         id: pip-linting-cache
