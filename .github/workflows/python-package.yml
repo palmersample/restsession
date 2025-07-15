@@ -51,7 +51,7 @@ jobs:
 
       - name: What's in local?
         run: |
-          ls -alR .local
+          ls -alR .cache/pypoetry
 
 
 #      - name: Install library
