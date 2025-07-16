@@ -37,5 +37,5 @@ jobs:
           ls -al
           source .venv/bin/activate
           pip freeze
-#          which pytest
-#          pytest
+          which pytest
+          pytest
