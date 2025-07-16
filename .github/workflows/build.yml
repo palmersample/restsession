@@ -5,6 +5,9 @@ on:
       python-version:
         required: true
         type: string
+      poetry-version:
+        required: true
+        type: string
 
 jobs:
   build:
