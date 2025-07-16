@@ -32,7 +32,7 @@ jobs:
           path: ~/.local
           key: poetry-${{ inputs.poetry-version }}
 
-      - name: Install Poetry
+      - name: Install Poetry ${{ inputs.poetry-version }}
         uses: snok/install-poetry@v1
         with:
           version: ${{ inputs.poetry-version }}
