@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: poetry-${{ runner.os }}-${{ inputs.poetry-version }}
+          key: poetry-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ inputs.poetry-version }}
           # key: poetry-${{ inputs.poetry-version }}
 
       - name: Install Poetry ${{ inputs.poetry-version }}
