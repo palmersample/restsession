@@ -73,5 +73,11 @@ jobs:
           path: dist
           retention-days: 1
 
+      - name: Get the version from pyproject.toml
+        uses: maybe-hello-world/pyproject-check-version@v4
+        id: project-version
+#        with:
+#          pyproject-path:
+
 # venv-Linux-3.10.18-206d0d9995a435ac15d60158d14b2f4bf80af930974509ceb35534232bbd82ba
 # venv-Linux-3.10.18-206d0d9995a435ac15d60158d14b2f4bf80af930974509ceb35534232bbd82ba
