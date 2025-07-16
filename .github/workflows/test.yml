@@ -21,11 +21,12 @@ jobs:
           path: .venv
           key: ${{ inputs.cached-venv-key }}
 
-      - name: Install the application
-        run: poetry install --no-interaction
+#      - name: Install the application
+#        run: poetry install --no-interaction
 
       - name: What's installed?
         run: |
           source .venv/bin/activate
           pip freeze
           which pytest
+          pytest tests
