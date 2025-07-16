@@ -63,8 +63,8 @@ jobs:
         run: poetry install --no-interaction --no-root --with test
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
 
-      - name: Install the library
-        run: poetry install --no-interaction
+      - name: Build a wheel from the source
+        run: poetry build --no-interaction
 
 # venv-Linux-3.10.18-206d0d9995a435ac15d60158d14b2f4bf80af930974509ceb35534232bbd82ba
 # venv-Linux-3.10.18-206d0d9995a435ac15d60158d14b2f4bf80af930974509ceb35534232bbd82ba

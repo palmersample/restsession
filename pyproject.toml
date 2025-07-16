@@ -24,8 +24,8 @@ classifiers = [
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry]
-packages = [{include = "restsession", from="src"}]
+#[tool.poetry]
+#packages = [{include = "restsession", from="src"}]
 
 [tool.pytest.ini_options]
 testpaths = [
