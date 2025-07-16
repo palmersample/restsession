@@ -40,6 +40,19 @@ jobs:
       python-version: ${{ matrix.python-version }}
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
 
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    needs:
+      - setup
+      - build
+    uses: ./.github/workflows/test.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
+
 #
 ##      - name: Install library
 ##        run: poetry install --no-interaction
