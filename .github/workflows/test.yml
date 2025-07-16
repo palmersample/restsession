@@ -35,6 +35,7 @@ jobs:
         run: |
           pwd
           ls -al
+          ls -la .venv/lib/python3.*/site-packages
           ls -la .venv/lib/python3.*/site-packages/restsession*
           source .venv/bin/activate
           pip freeze
