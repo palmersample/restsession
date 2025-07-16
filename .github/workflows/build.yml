@@ -8,11 +8,16 @@ on:
       poetry-version:
         required: true
         type: string
+    outputs:
+      cached-venv-key: ${{ jobs.build.outputs.venv-cache-key }}
+
 
 jobs:
   build:
     name: Build all packages and dependencies
     runs-on: ubuntu-latest
+    outputs:
+      venv-cache-key: ${{ steps.venv-cache-key.outputs.venv-cache-key }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -39,27 +44,22 @@ jobs:
           virtualenvs-path: .venv
         if: steps.cached-poetry.outputs.cache-hit != 'true'
 
-
-      - name: Where is poetry installed?
+      - name: Set cache key for output
+        id: venv-cache-key
         run: |
-          which poetry
-          poetry --version
+          echo "venv-cache-key=venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}" >> $GITHUB_OUTPUT
 
       - name: Load cached venv
         uses: actions/cache@v4
-        id: cached-poetry-dependencies
+        id: cached-poetry-venv
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ steps.venv-cache-key.outputs.venv-cache-key }}
+          # key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install dependencies
         run: poetry install --no-interaction --no-root --with test
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
 
-      - name: What's in local?
-        run: |
-          ls -alR ~/.local
-
-
-      - name: Install library
-        run: poetry install --no-interaction
+#      - name: Install library
+#        run: poetry install --no-interaction
