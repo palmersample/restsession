@@ -17,8 +17,8 @@ jobs:
       - name: Set output variables
         id: set-output-variables
         run: |
-          echo "dev-python-version=3.12" >> $GITHUB_OUTPUT
-          echo "poetry-version=2.1.3" >> $GITHUB_OUTPUT
+          echo "dev-python-version='3.12'" >> $GITHUB_OUTPUT
+          echo "poetry-version='2.1.3'" >> $GITHUB_OUTPUT
 
   linting:
     uses: ./.github/workflows/linting.yml
