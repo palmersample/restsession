@@ -1,4 +1,4 @@
-#name: build.yml
+name: Build all packages and dependencies
 on:
   workflow_call:
     inputs:
