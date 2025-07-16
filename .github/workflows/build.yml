@@ -9,7 +9,9 @@ on:
         required: true
         type: string
     outputs:
-      cached-venv-key: ${{ jobs.build.outputs.venv-cache-key }}
+      cached-venv-key:
+        description: Cache key for venv created by Poetry
+        value: ${{ jobs.build.outputs.venv-cache-key }}
 
 
 jobs:
