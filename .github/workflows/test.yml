@@ -37,6 +37,7 @@ jobs:
           ls -al
           ls -la .venv/lib/python3.*/site-packages
           ls -la .venv/lib/python3.*/site-packages/restsession*
+          cat .venv/lib/python3.*/site-packages/restsession.pth
           source .venv/bin/activate
           pip freeze
           which pytest
