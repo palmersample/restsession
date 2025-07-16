@@ -27,6 +27,10 @@ jobs:
           path: .venv
           key: ${{ inputs.cached-venv-key }}
 
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-wheel
 
 #      - name: Install the application
 #        run: poetry install --no-interaction
