@@ -31,8 +31,12 @@ jobs:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ env.DEV_PYTHON_VERSION }}
 
+      - name: What's in the pip cache?
+        run: |
+          ls -la ~/.cache/pip
+
       - name: Install basic linters
-        run: python -m pip install black flake8 isort
+        run: python -m pip install black flake8 isort pylint
         # if: steps.pip-linting-cache.outputs.cache-hit != 'true'
 
       - name: Where are the tools ${{ env.pythonLocation }}
