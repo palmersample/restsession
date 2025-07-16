@@ -8,10 +8,6 @@ on:
 
 jobs:
   linting:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-
     steps:
       - name: Check out repo
         uses: actions/checkout@v4

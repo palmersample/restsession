@@ -21,6 +21,7 @@ jobs:
           echo "poetry-version=2.1.3" >> $GITHUB_OUTPUT
 
   linting:
+    runs-on: ubuntu-latest
     uses: ./.github/workflows/linting.yml
     needs:
       - setup
@@ -29,11 +30,13 @@ jobs:
 
   build:
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     needs:
       - setup
       - linting
+    runs-on: ubuntu-latest
     uses: ./.github/workflows/build.yml
     with:
       python-version: ${{ matrix.python-version }}
