@@ -40,7 +40,8 @@ jobs:
 
       - name: Install the built wheel
         run: |
-          ls -al ${{ inputs.build-wheel-name }}
+          source .venv/bin/activate
+          pip install ${{ inputs.build-wheel-name }}
 
       - name: What's installed?
         run: |
