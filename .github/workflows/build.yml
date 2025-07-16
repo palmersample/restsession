@@ -43,7 +43,7 @@ jobs:
           version: ${{ inputs.poetry-version }}
           virtualenvs-create: true
           virtualenvs-in-project: true
-          virtualenvs-path: ~/.venv
+#          virtualenvs-path: ~/.venv
         if: steps.cached-poetry.outputs.cache-hit != 'true'
 
       - name: Set cache key for output
