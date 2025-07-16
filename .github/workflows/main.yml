@@ -11,8 +11,8 @@ jobs:
     name: Set environment variables for workflows
     runs-on: ubuntu-latest
     outputs:
-      dev-python-version: ${{ steps.set-output-variables.dev-python-version }}
-      poetry-version: ${{ steps.set-output-variables.poetry-version }}
+      dev-python-version: ${{ steps.set-output-variables.outputs.dev-python-version }}
+      poetry-version: ${{ steps.set-output-variables.outputs.poetry-version }}
     steps:
       - name: Set output variables
         id: set-output-variables
