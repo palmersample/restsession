@@ -42,9 +42,6 @@ jobs:
         with:
           name: build-${{ runner.os }}-${{ inputs.python-version }}
 
-#      - name: Install the application
-#        run: poetry install --no-interaction
-
       - name: Install the built wheel
         run: |
           source .venv/bin/activate
