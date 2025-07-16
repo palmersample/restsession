@@ -18,10 +18,10 @@ jobs:
         uses: actions/cache@v4
         id: cached-poetry-venv
         with:
-          path: ~/.venv
+          path: .venv
           key: ${{ inputs.cached-venv-key }}
 
       - name: What's installed?
         run: |
-          source ~/.venv/bin/activate
+          source .venv/bin/activate
           pip freeze
