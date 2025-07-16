@@ -35,7 +35,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: poetry-${{ inputs.poetry-version }}
+          key: poetry-${{ runner.os }}-${{ inputs.poetry-version }}
+          # key: poetry-${{ inputs.poetry-version }}
 
       - name: Install Poetry ${{ inputs.poetry-version }}
         uses: snok/install-poetry@v1
@@ -55,7 +56,7 @@ jobs:
         uses: actions/cache@v4
         id: cached-poetry-venv
         with:
-          path: ~/.venv
+          path: .venv
           key: ${{ steps.venv-cache-key.outputs.venv-cache-key }}
 
       - name: Install dependencies
