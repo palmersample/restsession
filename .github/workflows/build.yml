@@ -66,5 +66,8 @@ jobs:
       - name: Build a wheel from the source
         run: poetry build --no-interaction
 
+      - name: Make sure the wheel is where we expect
+        run: ls -al dist
+
 # venv-Linux-3.10.18-206d0d9995a435ac15d60158d14b2f4bf80af930974509ceb35534232bbd82ba
 # venv-Linux-3.10.18-206d0d9995a435ac15d60158d14b2f4bf80af930974509ceb35534232bbd82ba
