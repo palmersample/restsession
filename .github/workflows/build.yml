@@ -12,6 +12,9 @@ on:
       cached-venv-key:
         description: Cache key for venv created by Poetry
         value: ${{ jobs.build.outputs.venv-cache-key }}
+      build-wheel-name:
+        description: Filename of the built wheel artifat
+        value: ${{ jobs.build.outputs.build-wheel-name }}
 
 
 jobs:

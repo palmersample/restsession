@@ -8,6 +8,9 @@ on:
       cached-venv-key:
         required: true
         type: string
+      build-wheel-name:
+        required: true
+        type: string
 
 jobs:
   test:
@@ -34,6 +37,10 @@ jobs:
 
 #      - name: Install the application
 #        run: poetry install --no-interaction
+
+      - name: Install the built wheel
+        run: |
+          ls -al ${{ inputs.build-wheel-name }}
 
       - name: What's installed?
         run: |
