@@ -19,7 +19,7 @@ jobs:
         id: cached-poetry-venv
         with:
           path: .venv
-          key: ${{ inputs.venv-cache-key }}
+          key: ${{ inputs.cached-venv-key }}
 
       - name: What's installed?
         run: |
