@@ -30,6 +30,13 @@ jobs:
           path: .venv
           key: ${{ inputs.cached-venv-key }}
 
+      - name: Activate venv for all tasks
+        run: |
+          echo "PATH=${GITHUB_WORKSPACE}/.venv/bin:$PATH" >> $GITHUB_ENV
+          echo "VIRTUAL_ENV=${GITHUB_WORKSPACE}/.venv" >> $GITHUB_ENV
+          which python
+          which pip
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -43,13 +50,17 @@ jobs:
           source .venv/bin/activate
           pip install ${{ inputs.build-wheel-name }}
 
-      - name: What's installed?
-        run: |
-          pwd
-          ls -al
-          ls -la .venv/lib/python3.*/site-packages
-          ls -la .venv/lib/python3.*/site-packages/restsession*
-          source .venv/bin/activate
-          pip freeze
-          which pytest
-          pytest
+      - name: Prepare pytest cache
+        uses: actions/cache@v4
+        id: pytest-cache
+        with:
+          path: .pytest_cache
+          key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.build-wheel-name }}
+
+      - name: Run failed pytest results
+        run: pytest --lf
+        if: steps.pytest-cache.outputs.cache-hit == 'true'
+
+      - name: Clear pytest cache for new builds
+        run: pytest --cache-clear
+        if: steps.pytest-cache.outputs.cache-hit != 'true'
