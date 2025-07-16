@@ -37,6 +37,9 @@ jobs:
           which python
           which pip
 
+      - name: Is the venv activated?
+        run: which python
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -54,10 +57,15 @@ jobs:
           path: .pytest_cache
           key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.build-wheel-name }}
 
-      - name: Run failed pytest results
-        run: pytest --lf
-        if: steps.pytest-cache.outputs.cache-hit == 'true'
-
-      - name: Clear pytest cache for new builds
-        run: pytest --cache-clear
-        if: steps.pytest-cache.outputs.cache-hit != 'true'
+      - name: Find the pytest cache
+        run: |
+          pytest --cache-show
+          pwd
+#
+#      - name: Run failed pytest results
+#        run: pytest --lf
+#        if: steps.pytest-cache.outputs.cache-hit == 'true'
+#
+#      - name: Clear pytest cache for new builds
+#        run: pytest --cache-clear
+#        if: steps.pytest-cache.outputs.cache-hit != 'true'
