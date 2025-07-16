@@ -33,7 +33,7 @@ jobs:
 
       - name: What's in the pip cache?
         run: |
-          ls -la ~/.cache/pip
+          ls -laR ~/.cache/pip
 
       - name: Install basic linters
         run: python -m pip install black flake8 isort pylint
