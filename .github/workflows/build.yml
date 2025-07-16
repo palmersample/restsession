@@ -66,14 +66,16 @@ jobs:
       - name: Build a wheel from the source
         run: poetry build --no-interaction
 
+      - name: Get the version from pyproject.toml
+        id: build-wheel-name
+        run: |
+          echo "build-wheel-name=$(poetry version | sed -e 's/ /-/g' -e 's/$/-py3-none-any.whl/')" >> $GITHUB_OUTPUT 
+
       - name: Upload built wheel as an artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ runner.os }}-${{ inputs.python-version }}
-          path: dist
+          path: dist/${{ steps.build-wheel-name.outputs.build-wheel-name }}
           retention-days: 1
-
-      - name: Get the version from pyproject.toml
-        run: poetry version | sed -e 's/ /-/g' -e 's/$/-py3-none-any.whl/'
 
 # restsession-0.1.2-py3-none-any.whl
