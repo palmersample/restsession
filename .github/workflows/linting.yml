@@ -8,6 +8,8 @@ on:
 
 jobs:
   linting:
+    name: Lint all source files
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repo
         uses: actions/checkout@v4

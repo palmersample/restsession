@@ -11,6 +11,8 @@ on:
 
 jobs:
   build:
+    name: Build all packages and dependencies
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
