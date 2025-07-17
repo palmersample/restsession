@@ -1,6 +1,6 @@
 [project]
 name = "restsession"
-version = "0.2.0"
+version = "0.2.1"
 description = "RESTful API-friendly implementation of the 'requests' library"
 authors = [
     {name = "Palmer Sample",email = "palmer@palmersample.net"}
