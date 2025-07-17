@@ -37,7 +37,20 @@ pythonpath = [
 addopts = [
     "--import-mode=importlib",
 ]
-
+markers = [
+    "auth",
+    "custom_auth",
+    "basic_auth",
+    "redirect_auth",
+    "requests",
+    "combinations",
+    "headesr",
+    "attrs",
+    "objects",
+    "redirects",
+    "retries",
+    "disrespect",
+]
 
 [tool.poetry.group.test.dependencies]
 flake8 = "^7.3.0"
