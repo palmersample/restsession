@@ -27,7 +27,7 @@ jobs:
     with:
       python-version: ${{ needs.setup.outputs.dev-python-version }}
 
-  build:
+  python-venv:
     strategy:
       fail-fast: false
       matrix:
