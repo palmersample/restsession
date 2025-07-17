@@ -8,10 +8,6 @@ on:
       poetry-version:
         required: true
         type: string
-#    outputs:
-#      cached-venv-key:
-#        description: Cache key for venv created by Poetry
-#        value: ${{ jobs.build.outputs.venv-cache-key }}
 
 jobs:
   build:
@@ -28,5 +24,4 @@ jobs:
     uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ inputs.python-version }}
-      cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
       build-wheel-name: ${{ needs.build.outputs.build-wheel-name }}

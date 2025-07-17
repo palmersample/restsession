@@ -39,30 +39,3 @@ jobs:
     with:
       python-version: ${{ matrix.python-version }}
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
-
-#  test:
-#    strategy:
-#      fail-fast: false
-#      matrix:
-#        python-version: ["3.9", "3.10", "3.11", "3.12"]
-#    needs:
-#      - setup
-#      - build
-#    uses: ./.github/workflows/test.yml
-#    with:
-#      python-version: ${{ matrix.python-version }}
-#      cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
-#      build-wheel-name: ${{ needs.build.outputs.build-wheel-name }}
-#
-#
-##      - name: Install library
-##        run: poetry install --no-interaction
-#
-#      - name: Lint all source files
-#        run: |
-#          source .venv/bin/activate
-#
-#      - name: Test with pytest
-#        run: |
-#          source .venv/bin/activate
-#          pytest --doctest-modules --html=tests/logs/pytest-log.html --self-contained-html -v tests

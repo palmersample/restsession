@@ -16,7 +16,6 @@ on:
         description: Filename of the built wheel artifact
         value: ${{ jobs.build.outputs.build-wheel-name }}
 
-
 jobs:
   build:
     name: Build all packages and dependencies
@@ -81,5 +80,3 @@ jobs:
           name: build-${{ runner.os }}-${{ inputs.python-version }}
           path: dist/${{ steps.build-wheel-name.outputs.build-wheel-name }}
           retention-days: 1
-
-# restsession-0.1.2-py3-none-any.whl
