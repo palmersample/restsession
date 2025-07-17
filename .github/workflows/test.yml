@@ -63,7 +63,7 @@ jobs:
           pwd
 
       - name: Run failed pytest results
-        run: pytest --last-failed --last-failed-no-failures none
+        run: pytest --last-failed --last-failed-no-failures none tests
         if: steps.pytest-cache.outputs.cache-hit == 'true'
 
       - name: Clear pytest cache for new builds
