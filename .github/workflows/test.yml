@@ -61,11 +61,11 @@ jobs:
         run: |
           pytest --cache-show
           pwd
-#
-#      - name: Run failed pytest results
-#        run: pytest --lf
-#        if: steps.pytest-cache.outputs.cache-hit == 'true'
-#
-#      - name: Clear pytest cache for new builds
-#        run: pytest --cache-clear
-#        if: steps.pytest-cache.outputs.cache-hit != 'true'
+
+      - name: Run failed pytest results
+        run: pytest --last-failed --last-failed-no-failures none
+        if: steps.pytest-cache.outputs.cache-hit == 'true'
+
+      - name: Clear pytest cache for new builds
+        run: pytest --cache-clear
+        if: steps.pytest-cache.outputs.cache-hit != 'true'
