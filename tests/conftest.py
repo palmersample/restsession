@@ -14,6 +14,23 @@ import pytest
 
 logger = logging.getLogger(__name__)
 
+def pytest_sessionfinish(session, exitstatus):
+    """
+    Taken from https://github.com/pytest-dev/pytest/issues/2393
+
+    If pytest does not run tests (even when it's expected) when run with the
+    '--last-failed --last-failed-no-failures none' arguments, it exits with
+    a result of 5 (instead of 0), which causes pipelines to fail.
+
+    Overriding the behavior based on a code example by GitHub user 'yashtodi94'
+    to try to get the 5 changed to a zero.
+
+    :param session: Pytest session fixture
+    :param exitstatus: Exit status returned by pytest
+    :return: None
+    """
+    if exitstatus == 5:
+        session.exitstatus = 0 # Any arbitrary custom status you want to return```
 
 @pytest.fixture(scope="session",
                 params=[BaseUrlSession,
