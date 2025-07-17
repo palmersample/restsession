@@ -1,0 +1,41 @@
+---
+name: Workflow entrypoint
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  setup:
+    name: Set environment variables for workflows
+    runs-on: ubuntu-latest
+    outputs:
+      dev-python-version: ${{ steps.set-output-variables.outputs.dev-python-version }}
+      poetry-version: ${{ steps.set-output-variables.outputs.poetry-version }}
+    steps:
+      - name: Set output variables
+        id: set-output-variables
+        run: |
+          echo "dev-python-version=3.12" >> $GITHUB_OUTPUT
+          echo "poetry-version=2.1.3" >> $GITHUB_OUTPUT
+
+  linting:
+    uses: ./.github/workflows/linting.yml
+    needs:
+      - setup
+    with:
+      python-version: ${{ needs.setup.outputs.dev-python-version }}
+
+  python-venv:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    needs:
+      - setup
+      - linting
+    uses: ./.github/workflows/python-venv-jobs.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      poetry-version: ${{ needs.setup.outputs.poetry-version }}

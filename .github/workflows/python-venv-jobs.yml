@@ -1,0 +1,28 @@
+name: Python version-specific jobs
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+      poetry-version:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Start build process for Python ${{ inputs.python-version }}
+    uses: ./.github/workflows/build.yml
+    with:
+      python-version: ${{ inputs.python-version }}
+      poetry-version: ${{ inputs.poetry-version }}
+
+  test:
+    name: Run tests for Python ${{ inputs.python-version }}
+    needs:
+      - build
+    uses: ./.github/workflows/test.yml
+    with:
+      python-version: ${{ inputs.python-version }}
+      cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
+      build-wheel-name: ${{ needs.build.outputs.build-wheel-name }}

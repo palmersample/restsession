@@ -55,6 +55,13 @@ class SessionParamModel(BaseModel):
     @field_validator("base_url")
     @classmethod
     def base_url_ends_with_slash(cls, v: Optional[AnyUrlString]) -> Optional[AnyUrlString]:
+        """
+        Field validator for base_url. To ensure relative URLs work as expected,
+        add a trailing slash if not present.
+
+        :param v: Value provided for base_url
+        :return: Base URL with trailing slash appended
+        """
         if v is not None:
             if not v.endswith("/"):
                 v = f"{v}/"

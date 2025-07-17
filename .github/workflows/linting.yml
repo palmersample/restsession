@@ -1,0 +1,39 @@
+name: Lint all source files
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+
+jobs:
+  linting:
+    name: Lint all source files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Install Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Load pip cache
+        uses: actions/cache@v4
+        id: pip-linting-cache
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ inputs.python-version }}
+
+      - name: Install basic linters
+        run: python -m pip install black flake8 isort pylint astroid dill tomlkit
+
+      - name: Lint all source files
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          # OPTIONAL - Report any recommendations from black
+          # black . --check
