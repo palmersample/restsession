@@ -13,17 +13,8 @@ on:
         type: string
 
 jobs:
-  testing-env:
-    name: Build the version-specific testing environment
-    uses: ./.github/workflows/create-test-env.yml
-    with:
-      python-version: ${{ inputs.python-version }}
-      poetry-version: ${{ inputs.poetry-version }}
-
   test:
     name: Run tests for Python ${{ inputs.python-version }}
-    needs:
-      - testing-env
     uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ inputs.python-version }}
