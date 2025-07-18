@@ -93,7 +93,7 @@ jobs:
     needs:
       - build
       - deploy-testing
-    uses: testing-entrypoint.yml
+    uses: ./.github/workflows/testing-entrypoint.yml
     with:
       python-version: ${{ matrix.python-version }}
       cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
