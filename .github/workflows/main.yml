@@ -27,14 +27,21 @@ jobs:
     with:
       python-version: ${{ needs.setup.outputs.dev-python-version }}
 
+  build:
+    uses: ./.github/workflows/build.yml
+    needs:
+      - linting
+    with:
+      poetry-version: ${{ needs.setup.outputs.poetry-version }}
+      python-version: ${{ needs.setup.outputs.dev-python-version }}
+
   python-venv:
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     needs:
-      - setup
-      - linting
+      - build
     uses: ./.github/workflows/python-venv-jobs.yml
     with:
       python-version: ${{ matrix.python-version }}
