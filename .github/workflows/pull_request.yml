@@ -1,9 +1,7 @@
 ---
-name: Workflow entrypoint
+name: Pull Request
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
 
 jobs:
@@ -95,7 +93,7 @@ jobs:
     needs:
       - build
       - deploy-testing
-    uses: ./.github/workflows/python-venv-jobs.yml
+    uses: testing-entrypoint.yml
     with:
       python-version: ${{ matrix.python-version }}
       cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
