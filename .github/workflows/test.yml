@@ -23,17 +23,21 @@ jobs:
           sparse-checkout: 'tests'
           sparse-checkout-cone-mode: false
 
-#      - name: Load cached environment
-#        uses: actions/cache@v4
-#        id: cached-poetry-venv
-#        with:
-#          path: .venv
-#          key: ${{ inputs.cached-venv-key }}
-#
-#      - name: Activate venv for all tasks
-#        run: |
-#          echo "PATH=${GITHUB_WORKSPACE}/.venv/bin:$PATH" >> $GITHUB_ENV
-#          echo "VIRTUAL_ENV=${GITHUB_WORKSPACE}/.venv" >> $GITHUB_ENV
+      - name: Load cached environment
+        uses: actions/cache@v4
+        id: cached-poetry-venv
+        with:
+          path: .venv
+          key: ${{ inputs.cached-venv-key }}
+
+      - name: Activate venv for all tasks
+        run: |
+          echo "PATH=${GITHUB_WORKSPACE}/.venv/bin:$PATH" >> $GITHUB_ENV
+          echo "VIRTUAL_ENV=${GITHUB_WORKSPACE}/.venv" >> $GITHUB_ENV
+
+      - name: Verify Python version
+        run: |
+          python -V
 
       - name: Install wheel from TestPyPi
         run: |

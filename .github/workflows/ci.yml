@@ -103,11 +103,13 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     needs:
+      - setup
       - build
       - deploy-testing
     uses: ./.github/workflows/testing-entrypoint.yml
     with:
       python-version: ${{ matrix.python-version }}
+      poetry-version: ${{ needs.setup.outputs.poetry-version }}
       cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
       build-wheel-name: ${{ needs.build.outputs.build-wheel-name }}
 
