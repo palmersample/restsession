@@ -58,9 +58,9 @@ jobs:
         uses: actions/cache@v4
         id: cached-poetry-venv
         with:
-          path:
-            - .venv
-            - dist
+          path: |
+            .venv
+            dist
           key: ${{ steps.venv-cache-key.outputs.venv-cache-key }}
 
       - name: Install dependencies
