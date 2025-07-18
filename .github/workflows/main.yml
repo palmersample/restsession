@@ -11,14 +11,37 @@ jobs:
     name: Set environment variables for workflows
     runs-on: ubuntu-latest
     outputs:
+      project-name: ${{ steps.get-project-name.outputs.value }}
+      project-version: ${{ steps.get-project-version.outputs.value }}
       dev-python-version: ${{ steps.set-output-variables.outputs.dev-python-version }}
       poetry-version: ${{ steps.set-output-variables.outputs.poetry-version }}
     steps:
-      - name: Set output variables
+      - name: Pull pyproject.toml from the repo
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: pyproject.toml
+          sparse-checkout-cone-mode: false
+
+      - name: Get project name from pyproject.toml
+        uses: sravinet/toml-select@v1
+        id: get-project-name
+        with:
+          file: pyproject.toml
+          field: name
+
+      - name: Get project name from pyproject.toml
+        uses: sravinet/toml-select@v1
+        id: get-project-version
+        with:
+          file: pyproject.toml
+          field: version
+
+      - name: Set static variables
         id: set-output-variables
         run: |
           echo "dev-python-version=3.12" >> $GITHUB_OUTPUT
           echo "poetry-version=2.1.3" >> $GITHUB_OUTPUT
+
 
   linting:
     uses: ./.github/workflows/linting.yml
@@ -59,7 +82,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
 
-  python-venv:
+  execute-tests:
     strategy:
       fail-fast: false
       matrix:
@@ -72,3 +95,4 @@ jobs:
       python-version: ${{ matrix.python-version }}
       cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
       build-wheel-name: ${{ needs.build.outputs.build-wheel-name }}
+
