@@ -77,5 +77,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-python3-${{ runner.os }}
-          path: dist  # /${{ steps.build-wheel-name.outputs.build-wheel-name }}
-          retention-days: 1
+          path: dist
+          retention-days: 7
