@@ -30,6 +30,7 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
     needs:
+      - setup
       - linting
     with:
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
