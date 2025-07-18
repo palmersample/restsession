@@ -46,7 +46,7 @@ jobs:
 
       - name: Install wheel from TestPyPi
         run: |
-          pip install --index-url https://test.pypi.org/simple/ --no-deps restsession-palmersample
+          pip install --index-url https://test.pypi.org/simple/ --no-deps restsession
 
       - name: Prepare pytest cache
         uses: actions/cache@v4
