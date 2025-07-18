@@ -35,14 +35,18 @@ jobs:
           echo "PATH=${GITHUB_WORKSPACE}/.venv/bin:$PATH" >> $GITHUB_ENV
           echo "VIRTUAL_ENV=${GITHUB_WORKSPACE}/.venv" >> $GITHUB_ENV
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-python3-${{ runner.os }}
+#      - name: Download build artifacts
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: build-python3-${{ runner.os }}
+#
+#      - name: Install the built wheel
+#        run: |
+#          pip install ${{ inputs.build-wheel-name }}
 
-      - name: Install the built wheel
+      - name: Install wheel from TestPyPi
         run: |
-          pip install ${{ inputs.build-wheel-name }}
+          pip install --index-url https://test.pypi.org/simple/ --no-deps restsession-palmersample
 
       - name: Prepare pytest cache
         uses: actions/cache@v4

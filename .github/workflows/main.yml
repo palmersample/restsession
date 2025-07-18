@@ -57,6 +57,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 
   python-venv:
     strategy:
@@ -65,6 +66,7 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     needs:
       - build
+      - deploy-testing
     uses: ./.github/workflows/python-venv-jobs.yml
     with:
       python-version: ${{ matrix.python-version }}
