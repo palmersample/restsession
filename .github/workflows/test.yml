@@ -42,7 +42,7 @@ jobs:
 
       - name: Install the built wheel
         run: |
-          pip install ${{ inputs.build-wheel-name }}
+          pip install dist/${{ inputs.build-wheel-name }}
 
       - name: Prepare pytest cache
         uses: actions/cache@v4

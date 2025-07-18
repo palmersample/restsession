@@ -58,9 +58,7 @@ jobs:
         uses: actions/cache@v4
         id: cached-poetry-venv
         with:
-          path: |
-            .venv
-            dist
+          path: .venv
           key: ${{ steps.venv-cache-key.outputs.venv-cache-key }}
 
       - name: Install dependencies
@@ -79,5 +77,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ runner.os }}-${{ inputs.python-version }}
-          path: dist/${{ steps.build-wheel-name.outputs.build-wheel-name }}
+          path: dist  # /${{ steps.build-wheel-name.outputs.build-wheel-name }}
           retention-days: 1
