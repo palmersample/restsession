@@ -23,18 +23,18 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Get project name from pyproject.toml
-        uses: sravinet/toml-select@v1
+        uses: SebRollen/toml-action@v1.2.0
         id: get-project-name
         with:
           file: pyproject.toml
-          field: name
+          field: project.name
 
-      - name: Get project name from pyproject.toml
-        uses: sravinet/toml-select@v1
+      - name: Get project version from pyproject.toml
+        uses: SebRollen/toml-action@v1.2.0
         id: get-project-version
         with:
           file: pyproject.toml
-          field: version
+          field: project.version
 
       - name: Set static variables
         id: set-output-variables
