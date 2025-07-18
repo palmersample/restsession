@@ -110,6 +110,5 @@ jobs:
     with:
       python-version: ${{ matrix.python-version }}
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
-      cached-venv-key: ${{ needs.build.outputs.cached-venv-key }}
       build-wheel-name: ${{ needs.build.outputs.build-wheel-name }}
 
