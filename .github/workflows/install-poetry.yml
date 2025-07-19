@@ -42,10 +42,11 @@ jobs:
         with:
           version: ${{ inputs.poetry-version }}
           virtualenvs-create: true
-          virtualenvs-in-project: true
-          virtualenvs-path: ~/.venv
+          virtualenvs-in-project: false
+          virtualenvs-path: .venv
 
       - name: What exists?
         run: |
-          ls -al
+          ls -alR
           ls -la ~
+          ls -laR ~/.local
