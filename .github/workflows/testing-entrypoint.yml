@@ -16,14 +16,11 @@ on:
         type: string
 
 jobs:
-  testing-env:
-
-
   test:
     name: Run tests for Python ${{ inputs.python-version }}
     uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ inputs.python-version }}
-      poetry-cache-key: ${{ needs.install-poetry.outputs.poetry-cache-key }}
+      poetry-version: ${{ inputs.poetry-version }}
       project-name: ${{ inputs.project-name }}
       project-version: ${{ inputs.project-version }}
