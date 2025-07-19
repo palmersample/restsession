@@ -8,9 +8,6 @@ on:
       poetry-version:
         required: true
         type: string
-      poetry-cache-key:
-        required: true
-        type: string
 
 jobs:
   install-poetry:
@@ -19,7 +16,6 @@ jobs:
     with:
       python-version: ${{ inputs.python-version }}
       poetry-version: ${{ inputs.poetry-version }}
-      poetry-cache-key: ${{ inputs.poetry-cache-key }}
 
   build:
     name: Build all packages and dependencies
@@ -41,7 +37,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: ${{ inputs.poetry-cache-key }}
+          key: ${{ needs.install-poetry.outputs.poetry-cache-key }}
 
       - name: Build a wheel from the source
         run: poetry build --no-interaction
