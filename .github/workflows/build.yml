@@ -43,8 +43,8 @@ jobs:
         id: poetry-installed-venv
         uses: actions/cache@v4
         with:
-          path: .venv
-          key: poetry-${{ runner.os }}-${{ inputs.poetry-version }}-${{ inputs.python-version }}
+          path: ~/.venv
+          key: poetry-venv-${{ runner.os }}-${{ inputs.poetry-version }}-${{ inputs.python-version }}
 
       - name: Build a wheel from the source
         run: poetry build --no-interaction

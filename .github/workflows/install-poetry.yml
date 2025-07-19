@@ -34,8 +34,8 @@ jobs:
         id: poetry-installed-venv
         uses: actions/cache@v4
         with:
-          path: .venv
-          key: poetry-${{ runner.os }}-${{ inputs.poetry-version }}-${{ inputs.python-version }}
+          path: ~/.venv
+          key: poetry-venv-${{ runner.os }}-${{ inputs.poetry-version }}-${{ inputs.python-version }}
 
       - name: Install Poetry ${{ inputs.poetry-version }}
         uses: snok/install-poetry@v1
@@ -44,3 +44,8 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           virtualenvs-path: .venv
+
+      - name: What exists?
+        run: |
+          ls -al
+          ls -la ~
