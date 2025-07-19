@@ -28,13 +28,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: poetry-${{ runner.os }}-${{ inputs.poetry-version }}
+          key: poetry-${{ runner.os }}-${{ inputs.poetry-version }}-0  # Increment to clear the cache
 
       - name: Cache the Poetry venv
         id: poetry-installed-venv
         uses: actions/cache@v4
         with:
-          path: ~/.venv
+          path: .venv
           key: poetry-venv-${{ runner.os }}-${{ inputs.poetry-version }}-${{ inputs.python-version }}
 
       - name: Install Poetry ${{ inputs.poetry-version }}
