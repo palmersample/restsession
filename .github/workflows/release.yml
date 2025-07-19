@@ -9,11 +9,24 @@ jobs:
   setup:
     uses: ./.github/workflows/setup.yml
 
+  release-build:
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/build.yml
+    needs:
+      - setup
+    with:
+      poetry-version: ${{ needs.setup.outputs.poetry-version }}
+      python-version: ${{ needs.setup.outputs.dev-python-version }}
+      project-version: ${{ needs.setup.outputs.project-version }}
+      build-wheel-cache-key: ${{ needs.setup.outputs.build-wheel-cache-key }}
+
+
   release:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     needs:
       - setup
+      - release-build
     environment:
       name: release
       url: https://pypi.org/p/restsession
