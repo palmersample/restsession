@@ -55,10 +55,15 @@ jobs:
         id: cached-poetry-dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            .venv
-            .pytest_cache
-          key: testing-env-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.project-version }}-${{ hashFiles('**/poetry.lock') }}
+          path: .venv
+          key: testing-env-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Initialize pytest cache
+        id: pytest-cache
+        uses: actions/cache@v4
+        with:
+          path: .pytest_cache
+          key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.project-version }}
 
       - name: Install testing dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
