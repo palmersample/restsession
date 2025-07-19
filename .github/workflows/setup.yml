@@ -20,6 +20,9 @@ on:
       poetry-version:
         description: Poetry version to use for builds
         value: ${{ jobs.setup.outputs.poetry-version }}
+      build-wheel-cache-key:
+        description: Cache key for build artifacts
+        value: ${{ jobs.setup.outputs.build-wheel-cache-key }}
 
 jobs:
   setup:
@@ -32,7 +35,7 @@ jobs:
       local-version-higher: ${{ steps.get-project-version.outputs.local_version_is_higher }}
       dev-python-version: ${{ steps.get-dev-python-version.outputs.value }}
       poetry-version: ${{ steps.get-poetry-version.outputs.value }}
-      poetry-cache-key: ${{ steps.set-cache-keys.outputs.poetry-cache-key }}
+      build-wheel-cache-key: ${{ steps.set-cache-keys.outputs.dist-cache-key }}
 
     steps:
       - name: Pull pyproject.toml from the repo
@@ -67,3 +70,8 @@ jobs:
         id: get-project-version
         with:
           pyproject-path: pyproject.toml
+
+      - name: Define cache keys for other jobs
+        id: set-cache-keys
+        run: |
+          echo "dist-cache-key=dist-python3-${{ runner.os }}-v${{ inputs.project-version }}" >> $GITHUB_OUTPUT

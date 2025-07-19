@@ -11,10 +11,9 @@ on:
       project-version:
         required: true
         type: string
-    outputs:
-      dist-cache-key:
-        description: Cache key for build artifacts
-        value: ${{ jobs.build.outputs.dist-cache-key }}
+      build-wheel-cache-key:
+        required: true
+        type: string
 
 jobs:
   build:
@@ -25,11 +24,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Define cache keys for other jobs
-        id: set-dist-cache-key
-        run: |
-          echo "dist-cache-key=dist-python3-${{ runner.os }}-v${{ inputs.project-version }}" >> $GITHUB_OUTPUT
 
       - name: Set up python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
@@ -52,12 +46,12 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: Create distribution cache
+      - name: Initialize distribution cache
         id: cached-distribution
         uses: actions/cache@v4
         with:
           path: dist
-          key: ${{ steps.set-dist-cache-key.outputs.dist-cache-key }}
+          key: ${{ inputs.build-wheel-cache-key }}
 
       - name: Build a wheel from the source
         run: poetry build --no-interaction

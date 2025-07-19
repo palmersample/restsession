@@ -24,6 +24,7 @@ jobs:
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
       python-version: ${{ needs.setup.outputs.dev-python-version }}
       project-version: ${{ needs.setup.outputs.project-version }}
+      build-wheel-cache-key: ${{ needs.setup.outputs.build-wheel-cache-key }}
 
   deploy-testing:
     name: Upload wheel to TestPyPi
@@ -42,7 +43,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist
-          key: ${{ needs.build.outputs.dist-cache-key }}
+          key: ${{ needs.setup.outputs.build-wheel-cache-key }}
 
       - name: Verify the cache
         run: |
@@ -54,7 +55,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
 
-  execute-tests:
+  test:
     strategy:
       fail-fast: false
       matrix:
