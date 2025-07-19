@@ -1,0 +1,77 @@
+name: Setup
+on:
+  workflow_call:
+    outputs:
+      project-name:
+        description: Project name defined in pyproject.toml
+        value: ${{ jobs.setup.outputs.project-name }}
+      project-version:
+        description: Project version defined in pyproject.toml
+        value: ${{ jobs.setup.outputs.project-version }}
+      pypi-project-version:
+        description: Current version of package on PyPi
+        value: ${{ jobs.setup.outputs.pypi-project-version }}
+      local-version-higher:
+        description: Boolean - is the local version higher than PyPi?
+        value: ${{ jobs.setup.outputs.local-version-higher }}
+      dev-python-version:
+        description: Python version used for source development
+        value: ${{ jobs.setup.outputs.dev-python-version }}
+      poetry-version:
+        description: Poetry version to use for builds
+        value: ${{ jobs.setup.outputs.poetry-version }}
+      build-wheel-cache-key:
+        description: Cache key for build artifacts
+        value: ${{ jobs.setup.outputs.build-wheel-cache-key }}
+
+jobs:
+  setup:
+    name: Set variables for workflows
+    runs-on: ubuntu-latest
+    outputs:
+      project-name: ${{ steps.get-project-name.outputs.value }}
+      project-version: ${{ steps.get-project-version.outputs.local_version }}
+      pypi-project-version: ${{ steps.get-project-version.outputs.public_version }}
+      local-version-higher: ${{ steps.get-project-version.outputs.local_version_is_higher }}
+      dev-python-version: ${{ steps.get-dev-python-version.outputs.value }}
+      poetry-version: ${{ steps.get-poetry-version.outputs.value }}
+      build-wheel-cache-key: ${{ steps.set-cache-keys.outputs.dist-cache-key }}
+
+    steps:
+      - name: Pull pyproject.toml from the repo
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: pyproject.toml
+          sparse-checkout-cone-mode: false
+
+      - name: Get project name from pyproject.toml
+        uses: SebRollen/toml-action@v1.2.0
+        id: get-project-name
+        with:
+          file: pyproject.toml
+          field: project.name
+
+      - name: Get Python version used for development
+        uses: SebRollen/toml-action@v1.2.0
+        id: get-dev-python-version
+        with:
+          file: pyproject.toml
+          field: tool.restsession.dev-python-version
+
+      - name: Get desired Poetry version
+        uses: SebRollen/toml-action@v1.2.0
+        id: get-poetry-version
+        with:
+          file: pyproject.toml
+          field: tool.restsession.poetry-version
+
+      - name: Get local and PyPi version information
+        uses: maybe-hello-world/pyproject-check-version@v4
+        id: get-project-version
+        with:
+          pyproject-path: pyproject.toml
+
+      - name: Define cache keys for other jobs
+        id: set-cache-keys
+        run: |
+          echo "dist-cache-key=dist-python3-${{ runner.os }}-v${{ steps.get-project-version.outputs.local_version }}" >> $GITHUB_OUTPUT

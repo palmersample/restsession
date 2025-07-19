@@ -1,14 +1,17 @@
-name: Test code functionality
+name: Test
 on:
   workflow_call:
     inputs:
       python-version:
         required: true
         type: string
-      cached-venv-key:
+      poetry-version:
         required: true
         type: string
-      build-wheel-name:
+      project-name:
+        required: true
+        type: string
+      project-version:
         required: true
         type: string
 
@@ -17,23 +20,54 @@ jobs:
     name: Perform all code tests
     runs-on: ubuntu-latest
     steps:
+      - name: Set up python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        id: setup-python
+        with:
+          python-version: ${{ inputs.python-version }}
+
       - name: Pull the tests directory from the repo
         uses: actions/checkout@v4
         with:
-          sparse-checkout: 'tests'
+          sparse-checkout: |
+            tests
+            pyproject.toml
+            poetry.lock
           sparse-checkout-cone-mode: false
 
-      - name: Load cached environment
+      - name: Initialize Poetry cache
+        id: cached-poetry
         uses: actions/cache@v4
-        id: cached-poetry-venv
+        with:
+          path: ~/.local
+          key: poetry${{ inputs.poetry-version }}-python${{ inputs.python-version }}-v${{ inputs.project-version }}-${{ runner.os }}-test
+
+      - name: Install Poetry ${{ inputs.poetry-version }}
+        uses: snok/install-poetry@v1
+        if: steps.cached-poetry.outputs.cache-hit != true
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          virtualenvs-path: .venv
+          installer-parallel: true
+
+      - name: Initialize environment cache
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
         with:
           path: .venv
-          key: ${{ inputs.cached-venv-key }}
+          key: testing-env-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-      - name: Activate venv for all tasks
-        run: |
-          echo "PATH=${GITHUB_WORKSPACE}/.venv/bin:$PATH" >> $GITHUB_ENV
-          echo "VIRTUAL_ENV=${GITHUB_WORKSPACE}/.venv" >> $GITHUB_ENV
+      - name: Initialize pytest cache
+        id: pytest-cache
+        uses: actions/cache@v4
+        with:
+          path: .pytest_cache
+          key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.project-version }}
+
+      - name: Install testing dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root --with test
 
       - name: Verify Python version
         run: |
@@ -41,22 +75,15 @@ jobs:
 
       - name: Install wheel from TestPyPi
         run: |
-          pip install --index-url https://test.pypi.org/simple/ --no-deps restsession
-
-      - name: Prepare pytest cache
-        uses: actions/cache@v4
-        id: pytest-cache
-        with:
-          path: .pytest_cache
-          key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.build-wheel-name }}
+          poetry run pip install --index-url https://test.pypi.org/simple/ --no-deps ${{ inputs.project-name }}
 
       # If all tests passed and this is an existing wheel, instruct pytest to
       # not run all tests again. Useful for non-code changes (e.g. pipeline
       # task changes)
       - name: Run failed pytest results
-        run: pytest --last-failed --last-failed-no-failures none tests
+        run: poetry run pytest --last-failed --last-failed-no-failures none tests
         if: steps.pytest-cache.outputs.cache-hit == 'true'
 
       - name: Clear pytest cache for new builds
-        run: pytest --cache-clear
+        run: poetry run pytest --cache-clear
         if: steps.pytest-cache.outputs.cache-hit != 'true'
