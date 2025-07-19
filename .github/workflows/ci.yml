@@ -6,51 +6,7 @@ on:
 
 jobs:
   setup:
-    name: Set environment variables for workflows
-    runs-on: ubuntu-latest
-    outputs:
-      project-name: ${{ steps.get-project-name.outputs.value }}
-      project-version: ${{ steps.get-project-version.outputs.value }}
-      dev-python-version: ${{ steps.set-output-variables.outputs.dev-python-version }}
-      poetry-version: ${{ steps.set-output-variables.outputs.poetry-version }}
-    steps:
-      - name: Pull pyproject.toml from the repo
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: pyproject.toml
-          sparse-checkout-cone-mode: false
-
-      - name: Get project name from pyproject.toml
-        uses: SebRollen/toml-action@v1.2.0
-        id: get-project-name
-        with:
-          file: pyproject.toml
-          field: project.name
-
-      - name: Get project version from pyproject.toml
-        uses: SebRollen/toml-action@v1.2.0
-        id: get-project-version
-        with:
-          file: pyproject.toml
-          field: project.version
-
-      - name: Set static variables
-        id: set-output-variables
-        run: |
-          echo "dev-python-version=3.12" >> $GITHUB_OUTPUT
-          echo "poetry-version=2.1.3" >> $GITHUB_OUTPUT
-
-      - name: Check pypi versions
-        uses: maybe-hello-world/pyproject-check-version@v4
-        id: versioncheck
-        with:
-          pyproject-path: pyproject.toml
-
-      - name: Show what we got
-        run: |
-          echo "Output: ${{ steps.versioncheck.outputs.local_version_is_higher }}"  # 'true' or 'false
-          echo "Local version: ${{ steps.versioncheck.outputs.local_version }}"     # e.g., 0.1.1
-          echo "Public version: ${{ steps.versioncheck.outputs.public_version }}"   # e.g., 0.1.0
+    uses: ./.github/workflows/setup.yml
 
   linting:
     uses: ./.github/workflows/linting.yml
@@ -67,6 +23,8 @@ jobs:
     with:
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
       python-version: ${{ needs.setup.outputs.dev-python-version }}
+      project-version: ${{ needs.setup.outputs.project-version }}
+      build-wheel-cache-key: ${{ needs.setup.outputs.build-wheel-cache-key }}
 
   deploy-testing:
     name: Upload wheel to TestPyPi
@@ -80,16 +38,16 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - name: Download wheel artifact
-        uses: actions/download-artifact@v4
+      - name: Load distribution cache
+        id: cached-distribution
+        uses: actions/cache@v4
         with:
-          name: build-python3-${{ runner.os }}
           path: dist
+          key: ${{ needs.setup.outputs.build-wheel-cache-key }}
 
-      - name: Did we get the proper version
+      - name: Verify the cache
         run: |
-          echo ${{ needs.setup.outputs.project-name }}
-          echo ${{ needs.setup.outputs.project-version }}
+          ls -la dist
 
       - name: Upload wheel to TestPyPi
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -97,7 +55,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
 
-  execute-tests:
+  test:
     strategy:
       fail-fast: false
       matrix:
@@ -106,9 +64,9 @@ jobs:
       - setup
       - build
       - deploy-testing
-    uses: ./.github/workflows/testing-entrypoint.yml
+    uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ matrix.python-version }}
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
-      build-wheel-name: ${{ needs.build.outputs.build-wheel-name }}
-
+      project-name: ${{ needs.setup.outputs.project-name }}
+      project-version: ${{ needs.setup.outputs.project-version }}

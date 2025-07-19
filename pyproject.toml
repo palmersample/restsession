@@ -19,6 +19,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[tool.restsession]
+dev-python-version = "3.12"
+poetry-version = "2.1.3"
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
