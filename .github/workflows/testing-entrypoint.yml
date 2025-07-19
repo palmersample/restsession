@@ -1,31 +1,43 @@
-name: Python version-specific jobs
+name: Test supported Python versions
 on:
   workflow_call:
     inputs:
       python-version:
         required: true
         type: string
-      build-wheel-name:
+      poetry-version:
         required: true
         type: string
-      poetry-version:
+      project-name:
+        required: true
+        type: string
+      project-version:
         required: true
         type: string
 
 jobs:
-  testing-env:
-    name: Build the version-specific testing environment
-    uses: ./.github/workflows/create-test-env.yml
+  install-poetry:
+    name: Install Poetry
+    uses: ./.github/workflows/install-poetry.yml
     with:
       python-version: ${{ inputs.python-version }}
       poetry-version: ${{ inputs.poetry-version }}
 
+
+  #  testing-env:
+#    name: Build the version-specific testing environment
+#    uses: ./.github/workflows/create-test-env.yml
+#    with:
+#      python-version: ${{ inputs.python-version }}
+#      poetry-version: ${{ inputs.poetry-version }}
+
   test:
     name: Run tests for Python ${{ inputs.python-version }}
     needs:
-      - testing-env
+      - install-poetry
     uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ inputs.python-version }}
-      cached-venv-key: ${{ needs.testing-env.outputs.cached-venv-key }}
-      build-wheel-name: ${{ inputs.build-wheel-name }}
+      poetry-cache-key: ${{ needs.install-poetry.outputs.poetry-cache-key }}
+      project-name: ${{ inputs.project-name }}
+      project-version: ${{ inputs.project-version }}

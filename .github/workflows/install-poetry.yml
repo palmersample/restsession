@@ -20,13 +20,13 @@ jobs:
     outputs:
       poetry-cache-key: ${{ steps.set-poetry-cache-key.outputs.poetry-cache-key }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Define cache keys for other jobs
         id: set-poetry-cache-key
         run: |
           echo "poetry-cache-key=poetry${{ inputs.poetry-version }}-python${{ inputs.python-version }}-${{ runner.os }}" >> $GITHUB_OUTPUT
-
-      - name: Check out repository
-        uses: actions/checkout@v4
 
       - name: Set up python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
@@ -47,4 +47,4 @@ jobs:
         with:
           version: ${{ inputs.poetry-version }}
           virtualenvs-create: true
-          virtualenvs-in-project: false
+          virtualenvs-in-project: true

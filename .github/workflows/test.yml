@@ -1,14 +1,14 @@
-name: Test code functionality
+name: Test
 on:
   workflow_call:
     inputs:
       python-version:
         required: true
         type: string
-      cached-venv-key:
+      poetry-cache-key:
         required: true
         type: string
-      build-wheel-name:
+      project-name:
         required: true
         type: string
 
@@ -20,15 +20,25 @@ jobs:
       - name: Pull the tests directory from the repo
         uses: actions/checkout@v4
         with:
-          sparse-checkout: 'tests'
+          sparse-checkout: |
+            tests
+            pyproject.toml
+            poetry.lock
           sparse-checkout-cone-mode: false
 
-      - name: Load cached environment
+      - name: Load cached Poetry installation
+        id: cached-poetry
+        uses: actions/cache@v4
+        with:
+          path: ~/.local
+          key: ${{ inputs.poetry-cache-key }}
+
+      - name: Load package cache
         uses: actions/cache@v4
         id: cached-poetry-venv
         with:
           path: .venv
-          key: ${{ inputs.cached-venv-key }}
+          key: venv-${{ runner.os }}-python${{ inputs.python-version }}-testing
 
       - name: Activate venv for all tasks
         run: |
@@ -41,7 +51,7 @@ jobs:
 
       - name: Install wheel from TestPyPi
         run: |
-          pip install --index-url https://test.pypi.org/simple/ --no-deps restsession
+          pip install --index-url https://test.pypi.org/simple/ --no-deps ${{ inputs.project-name }}
 
       - name: Prepare pytest cache
         uses: actions/cache@v4

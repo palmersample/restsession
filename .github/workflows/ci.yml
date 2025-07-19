@@ -53,19 +53,19 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
-#
-#  execute-tests:
-#    strategy:
-#      fail-fast: false
-#      matrix:
-#        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-#    needs:
-#      - setup
-#      - build
-#      - deploy-testing
-#    uses: ./.github/workflows/testing-entrypoint.yml
-#    with:
-#      python-version: ${{ matrix.python-version }}
-#      poetry-version: ${{ needs.setup.outputs.poetry-version }}
-#      build-wheel-name: ${{ needs.build.outputs.build-wheel-name }}
 
+  execute-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    needs:
+      - setup
+      - build
+      - deploy-testing
+    uses: ./.github/workflows/testing-entrypoint.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      poetry-version: ${{ needs.setup.outputs.poetry-version }}
+      project-name: ${{ needs.setup.outputs.project-name }}
+      project-version: ${{ needs.setup.outputs.project-version }}
