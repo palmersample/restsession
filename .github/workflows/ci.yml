@@ -23,35 +23,36 @@ jobs:
     with:
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
       python-version: ${{ needs.setup.outputs.dev-python-version }}
+      project-version: ${{ needs.setup.outputs.project-version }}
 
-#  deploy-testing:
-#    name: Upload wheel to TestPyPi
-#    runs-on: ubuntu-latest
-#    needs:
-#      - setup
-#      - build
-#    environment:
-#      name: devtest
-#      url: https://test.pypi.org/p/restsession
-#    permissions:
-#      id-token: write
-#    steps:
-#      - name: Download wheel artifact
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: build-python3-${{ runner.os }}
-#          path: dist
-#
-#      - name: Did we get the proper version
-#        run: |
-#          echo ${{ needs.setup.outputs.project-name }}
-#          echo ${{ needs.setup.outputs.project-version }}
-#
-#      - name: Upload wheel to TestPyPi
-#        uses: pypa/gh-action-pypi-publish@release/v1
-#        with:
-#          repository-url: https://test.pypi.org/legacy/
-#          skip-existing: true
+  deploy-testing:
+    name: Upload wheel to TestPyPi
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - build
+    environment:
+      name: devtest
+      url: https://test.pypi.org/p/restsession
+    permissions:
+      id-token: write
+    steps:
+      - name: Load distribution cache
+        id: cached-distribution
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: ${{ needs.build.outputs.dist-cache-key }}
+
+      - name: Verify the cache
+        run: |
+          ls -la dist
+
+      - name: Upload wheel to TestPyPi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 #
 #  execute-tests:
 #    strategy:

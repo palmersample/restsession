@@ -8,6 +8,13 @@ on:
       poetry-version:
         required: true
         type: string
+      project-version:
+        required: true
+        type: string
+    outputs:
+      dist-cache-key:
+        description: Cache key for build artifacts
+        value: ${{ jobs.build.outputs.dist-cache-key }}
 
 jobs:
   install-poetry:
@@ -22,9 +29,16 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - install-poetry
+    outputs:
+      dist-cache-key: ${{ steps.set-dist-cache-key.outputs.dist-cache-key }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Define cache keys for other jobs
+        id: set-dist-cache-key
+        run: |
+          echo "dist-cache-key=dist-python3-${{ runner.os }}-v${{ project-version }}" >> $GITHUB_OUTPUT
 
       - name: Set up python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
@@ -39,12 +53,12 @@ jobs:
           path: ~/.local
           key: ${{ needs.install-poetry.outputs.poetry-cache-key }}
 
+      - name: Create distribution cache
+        id: cached-distribution
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: ${{ steps.set-dist-cache-key.outputs.dist-cache-key }}
+
       - name: Build a wheel from the source
         run: poetry build --no-interaction
-
-      - name: Upload built wheel as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-python3-${{ runner.os }}
-          path: dist
-          retention-days: 7
