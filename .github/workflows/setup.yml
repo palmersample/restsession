@@ -1,4 +1,4 @@
-name: Set common variables
+name: Setup
 on:
   workflow_call:
     outputs:
@@ -24,7 +24,7 @@ on:
 
 jobs:
   setup:
-    name: Set environment variables for workflows
+    name: Set variables for workflows
     runs-on: ubuntu-latest
     outputs:
       project-name: ${{ steps.get-project-name.outputs.value }}
