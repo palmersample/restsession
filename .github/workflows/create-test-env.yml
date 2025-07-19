@@ -40,7 +40,7 @@ jobs:
       - name: Set cache key for output
         id: venv-cache-key
         run: |
-          echo "venv-cache-key=venv-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/poetry.lock') }}" >> $GITHUB_OUTPUT
+          echo "venv-cache-key=venv-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('**/poetry.lock') }}" >> $GITHUB_OUTPUT
 
       - name: Load cached venv
         uses: actions/cache@v4
