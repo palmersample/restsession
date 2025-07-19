@@ -8,10 +8,6 @@ on:
       poetry-version:
         required: true
         type: string
-    outputs:
-      poetry-cache-key:
-        description: Key for Poetry GitHub cache
-        value: ${{ jobs.install-poetry.outputs.poetry-cache-key }}
 
 jobs:
   install-poetry:
@@ -26,7 +22,7 @@ jobs:
       - name: Define cache keys for other jobs
         id: set-poetry-cache-key
         run: |
-          echo "poetry-cache-key=poetry${{ inputs.poetry-version }}-python${{ inputs.python-version }}-${{ runner.os }}" >> $GITHUB_OUTPUT
+          echo "poetry-cache-key=" >> $GITHUB_OUTPUT
 
       - name: Set up python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
@@ -34,17 +30,3 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
 
-      - name: Load cached Poetry installation
-        id: cached-poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: ${{ steps.set-poetry-cache-key.outputs.poetry-cache-key }}
-
-      - name: Install Poetry ${{ inputs.poetry-version }}
-        uses: snok/install-poetry@v1
-        if: steps.cached-poetry.outputs.cache-hit != true
-        with:
-          version: ${{ inputs.poetry-version }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true

@@ -5,7 +5,7 @@ on:
       python-version:
         required: true
         type: string
-      poetry-cache-key:
+      poetry-version:
         required: true
         type: string
       project-name:
@@ -29,21 +29,33 @@ jobs:
             poetry.lock
           sparse-checkout-cone-mode: false
 
-      - name: Load cached Poetry installation
+      - name: Initialize Poetry cache
         id: cached-poetry
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: ${{ inputs.poetry-cache-key }}
+          key: poetry${{ inputs.poetry-version }}-python${{ inputs.python-version }}-v${{ inputs.project-version }}-${{ runner.os }}-test
 
-      - name: Load package cache
-        uses: actions/cache@v4
-        id: cached-poetry-venv
+      - name: Install Poetry ${{ inputs.poetry-version }}
+        uses: snok/install-poetry@v1
+        if: steps.cached-poetry.outputs.cache-hit != true
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-python${{ inputs.python-version }}-testing
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          virtualenvs-path: .venv
+          installer-parallel: true
+
+      - name: Initialize environment cache
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            .pytest_cache
+          key: testing-env-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.project-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install testing dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root --with test
 
       - name: Verify Python version
@@ -53,13 +65,6 @@ jobs:
       - name: Install wheel from TestPyPi
         run: |
           poetry run pip install --index-url https://test.pypi.org/simple/ --no-deps ${{ inputs.project-name }}
-
-      - name: Prepare pytest cache
-        uses: actions/cache@v4
-        id: pytest-cache
-        with:
-          path: .pytest_cache
-          key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.build-wheel-name }}
 
       # If all tests passed and this is an existing wheel, instruct pytest to
       # not run all tests again. Useful for non-code changes (e.g. pipeline

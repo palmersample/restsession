@@ -16,25 +16,11 @@ on:
         type: string
 
 jobs:
-  install-poetry:
-    name: Install Poetry
-    uses: ./.github/workflows/install-poetry.yml
-    with:
-      python-version: ${{ inputs.python-version }}
-      poetry-version: ${{ inputs.poetry-version }}
+  testing-env:
 
-
-  #  testing-env:
-#    name: Build the version-specific testing environment
-#    uses: ./.github/workflows/create-test-env.yml
-#    with:
-#      python-version: ${{ inputs.python-version }}
-#      poetry-version: ${{ inputs.poetry-version }}
 
   test:
     name: Run tests for Python ${{ inputs.python-version }}
-    needs:
-      - install-poetry
     uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ inputs.python-version }}

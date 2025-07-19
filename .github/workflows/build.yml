@@ -17,18 +17,9 @@ on:
         value: ${{ jobs.build.outputs.dist-cache-key }}
 
 jobs:
-  install-poetry:
-    name: Install Poetry
-    uses: ./.github/workflows/install-poetry.yml
-    with:
-      python-version: ${{ inputs.python-version }}
-      poetry-version: ${{ inputs.poetry-version }}
-
   build:
     name: Build all packages and dependencies
     runs-on: ubuntu-latest
-    needs:
-      - install-poetry
     outputs:
       dist-cache-key: ${{ steps.set-dist-cache-key.outputs.dist-cache-key }}
     steps:
@@ -46,12 +37,20 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
 
-      - name: Load cached Poetry installation
+      - name: Initialize Poetry cache
         id: cached-poetry
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: ${{ needs.install-poetry.outputs.poetry-cache-key }}
+          key: poetry${{ inputs.poetry-version }}-python${{ inputs.python-version }}-v${{ inputs.project-version }}-${{ runner.os }}-build
+
+      - name: Install Poetry ${{ inputs.poetry-version }}
+        uses: snok/install-poetry@v1
+        if: steps.cached-poetry.outputs.cache-hit != true
+        with:
+          version: ${{ inputs.poetry-version }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - name: Create distribution cache
         id: cached-distribution

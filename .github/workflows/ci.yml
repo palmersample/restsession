@@ -63,7 +63,7 @@ jobs:
       - setup
       - build
       - deploy-testing
-    uses: ./.github/workflows/testing-entrypoint.yml
+    uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ matrix.python-version }}
       poetry-version: ${{ needs.setup.outputs.poetry-version }}
