@@ -1,4 +1,4 @@
-name: Build all packages and dependencies
+name: Install Poetry and create the venv
 on:
   workflow_call:
     inputs:
@@ -10,18 +10,9 @@ on:
         type: string
 
 jobs:
-  install-poetry:
-    name: Install Poetry
-    uses: ./.github/workflows/install-poetry.yml
-    with:
-      python-version: ${{ inputs.python-version }}
-      poetry-version: ${{ inputs.poetry-version }}
-
   build:
-    name: Build all packages and dependencies
+    name: Install Poetry
     runs-on: ubuntu-latest
-    needs:
-      - install-poetry
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -39,12 +30,10 @@ jobs:
           path: ~/.local
           key: poetry-${{ runner.os }}-${{ inputs.poetry-version }}
 
-      - name: Build a wheel from the source
-        run: poetry build --no-interaction
-
-      - name: Upload built wheel as an artifact
-        uses: actions/upload-artifact@v4
+      - name: Install Poetry ${{ inputs.poetry-version }}
+        uses: snok/install-poetry@v1
         with:
-          name: build-python3-${{ runner.os }}
-          path: dist
-          retention-days: 7
+          version: ${{ inputs.poetry-version }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          virtualenvs-path: .venv
