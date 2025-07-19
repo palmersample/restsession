@@ -8,6 +8,9 @@ on:
       poetry-version:
         required: true
         type: string
+      poetry-cache-key:
+        required: true
+        type: string
 
 jobs:
   install-poetry:
@@ -16,6 +19,7 @@ jobs:
     with:
       python-version: ${{ inputs.python-version }}
       poetry-version: ${{ inputs.poetry-version }}
+      poetry-cache-key: ${{ inputs.poetry-cache-key }}
 
   build:
     name: Build all packages and dependencies
@@ -37,14 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: poetry-${{ runner.os }}-${{ inputs.poetry-version }}-0
-
-      - name: Load the cached Poetry venv
-        id: poetry-installed-venv
-        uses: actions/cache@v4
-        with:
-          path: ~/.venv
-          key: poetry-venv-${{ runner.os }}-${{ inputs.poetry-version }}-${{ inputs.python-version }}
+          key: ${{ inputs.poetry-cache-key }}
 
       - name: Build a wheel from the source
         run: poetry build --no-interaction
