@@ -38,7 +38,7 @@ jobs:
       - name: Define cache keys for other jobs
         id: set-dist-cache-key
         run: |
-          echo "dist-cache-key=dist-python3-${{ runner.os }}-v${{ project-version }}" >> $GITHUB_OUTPUT
+          echo "dist-cache-key=dist-python3-${{ runner.os }}-v${{ inputs.project-version }}" >> $GITHUB_OUTPUT
 
       - name: Set up python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
