@@ -30,7 +30,7 @@ jobs:
       name: release
       url: https://pypi.org/p/restsession
     permissions:
-      id-token: write
+      contents: write
 
     steps:
       - name: Load distribution cache
