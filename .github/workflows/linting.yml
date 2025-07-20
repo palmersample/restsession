@@ -1,4 +1,5 @@
-name: Lint all source files
+---
+name: Linting
 on:
   workflow_call:
     inputs:

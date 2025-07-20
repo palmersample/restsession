@@ -1,9 +1,15 @@
+---
 name: PyPi Release
 
 on:
   pull_request_target:
     types:
       - closed
+    paths:
+      - src/**
+      - tests/**
+      - pyproject.toml
+      - poetry.lock
 
 jobs:
   setup:
@@ -45,8 +51,12 @@ jobs:
         run: |
           ls -la dist
 
-      - name: Upload wheel to PyPi Production
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Check version for RC status
+        id: release-check
+        run: |
+          if [[ "${{ needs.setup.outputs.project-version }}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            echo "pypi-release=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Tag this commit
         id: create_tag
@@ -55,4 +65,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit: ${{ github.sha }}
           tag: ${{ needs.setup.outputs.project-version }}
-          artifacts: "dist/*.whl"
+          artifacts: "dist/*.whl,dist/*.tar.gz"
+
+      - name: Upload wheel to PyPi Production
+        if: >-
+          ${{
+            steps.release-check.outputs.pypi-release == 'true' && 
+            needs.setup.outputs.local-version-higher == 'true'
+          }}
+        uses: pypa/gh-action-pypi-publish@release/v1
