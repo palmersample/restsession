@@ -1,4 +1,5 @@
-name: Build all packages and dependencies
+---
+name: Build
 on:
   workflow_call:
     inputs:
