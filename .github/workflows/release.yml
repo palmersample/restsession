@@ -31,6 +31,7 @@ jobs:
       url: https://pypi.org/p/restsession
     permissions:
       contents: write
+      id-token: write
 
     steps:
       - name: Load distribution cache
@@ -44,7 +45,7 @@ jobs:
         run: |
           ls -la dist
 
-      - name: Upload wheel to TestPyPi
+      - name: Upload wheel to PyPi Production
         uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Tag this commit
