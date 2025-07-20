@@ -64,7 +64,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit: ${{ github.sha }}
-          tag: ${{ needs.setup.outputs.project-version }}
+          tag: v${{ needs.setup.outputs.project-version }}
           artifacts: "dist/*.whl,dist/*.tar.gz"
 
       - name: Upload wheel to PyPi Production

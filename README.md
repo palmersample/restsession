@@ -1,6 +1,6 @@
 # restsession
 
-[![CI](https://github.com/palmersample/restsession/actions/workflows/ci.yml/badge.svg)](https://github.com/palmersample/restsession/actions/workflows/ci.yml) [![PyPi Release](https://github.com/palmersample/restsession/actions/workflows/release.yml/badge.svg)](https://github.com/palmersample/restsession/actions/workflows/release.yml)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/restsession) [![CI](https://github.com/palmersample/restsession/actions/workflows/ci.yml/badge.svg)](https://github.com/palmersample/restsession/actions/workflows/ci.yml) [![PyPi Release](https://github.com/palmersample/restsession/actions/workflows/release.yml/badge.svg)](https://github.com/palmersample/restsession/actions/workflows/release.yml)
 
 
 HTTP Session package for RESTful API consumption. This project is a wrapper for the Python "requests" library that incorporates features that normally must be added for each project such a automatic Retry support, Base URL sessions, and non-standard authorization header removal on cross-domain redirects. Configuration for each feature is performed by modifying object attributes for the RestSession instance.
