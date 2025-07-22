@@ -82,7 +82,7 @@ jobs:
       # not run all tests again. Useful for non-code changes (e.g. pipeline
       # task changes)
       - name: Run failed pytest results
-        run: poetry run pytest --last-failed --last-failed-no-failures none tests
+        run: poetry run pytest --last-failed --last-failed-no-failures none
         if: steps.pytest-cache.outputs.cache-hit == 'true'
 
       - name: Clear pytest cache for new builds

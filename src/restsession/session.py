@@ -10,17 +10,14 @@ import logging
 from urllib.parse import urlparse, urljoin
 from typing import Optional
 from types import MappingProxyType
-# from pydantic import (BaseModel, ValidationError, StrictInt, StrictFloat, conint)
 from pydantic import (ValidationError, StrictInt, StrictFloat, conint)
 from requests.exceptions import (HTTPError as RequestHTTPError)
 from requests.adapters import HTTPAdapter
 from requests import Session as RequestSession
 
-# from requests_toolbelt.sessions import BaseUrlSession
 from urllib3 import disable_warnings
 from urllib3.util.retry import Retry
 from .defaults import SESSION_DEFAULTS
-# from .default_hooks import (remove_custom_auth_header_on_redirect, default_request_exception_hook)
 from .models import SessionParamModel
 from .exceptions import (InvalidParameterError, InitializationError)
 

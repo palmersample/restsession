@@ -1,6 +1,6 @@
 [project]
 name = "restsession"
-version = "0.2.4rc1"
+version = "1.0.0"
 description = "RESTful API-friendly implementation of the 'requests' library"
 authors = [
     {name = "Palmer Sample",email = "palmer@palmersample.net"}
@@ -28,6 +28,11 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
 ]
 
+[project.urls]
+"Homepage" = "https://github.com/palmersample/restsession"
+"Bug Tracker" = "https://github.com/palmersample/restsession/issues"
+
+
 [tool.restsession]
 dev-python-version = "3.12"
 poetry-version = "2.1.3"
@@ -37,18 +42,39 @@ poetry-version = "2.1.3"
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-#[tool.poetry]
-#packages = [{include = "restsession", from="src"}]
 
 [tool.pytest.ini_options]
+log_cli = false
+log_cli_level = "DEBUG"
+
 testpaths = [
     "tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
 ]
 pythonpath = [
     "src",
 ]
 addopts = [
     "--import-mode=importlib",
+    "--cov=restsession",
+    "--cov-report=term-missing",
+]
+markers = [
+    "auth: Module marker - run all tests in test_auth.py",
+    "requests: Module marker - run all tests in test_basic_requests.py",
+    "combinations: Module marker - run all tests in test_combinations.py",
+    "headers: Module marker - run all tests in test_headers.py",
+    "attrs: Module marker - run all tests in test_object_attributes.py",
+    "objects: Module marker - run all tests in test_object_creation.py",
+    "redirects: Module marker - run all tests in test_redirects.py",
+    "retries: Module marker - run all tests in test_retries.py",
+    "exceptions: Module marker - run all tests in test_exceptions.py",
+    "basic_auth: Run only the tests related to basic authentication",
+    "custom_auth: Run only the tests related to custom authentication",
+    "redirect_auth: Run tests related to authentication with redirects",
+    "disrespect: Run tests that are disrespectful to the server (i.e. ignoring Retry-After headers)",
 ]
 
 
@@ -57,7 +83,4 @@ flake8 = "^7.3.0"
 pytest = "^8.4.1"
 pytest-html = "^4.1.1"
 requests-toolbelt = "^1.0.0"
-
-[project.urls]
-"Homepage" = "https://github.com/palmersample/restsession"
-"Bug Tracker" = "https://github.com/palmersample/restsession/issues"
+pytest-cov = "^6.2.1"

@@ -3,37 +3,39 @@ Basic object creation test - ensure each class can be instantiated as expected
 """
 import logging
 import pytest
+import requests_toolbelt.sessions
+import restsession.exceptions
 
 logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.objects
 
 
-@pytest.fixture(scope="module")
-def bad_session_attributes():
-    """
-    Fixture for invalid attributes for each session parameter.
-
-    :return: dictionary with invalid attributes
-    """
-    return {
-        "headers": ("value_one", "value_two", "value_three"),
-        "auth_headers": 31337,
-        "auth": {"key": "value"},
-        "timeout": "string_value",
-        "retries": "string_value",
-        "max_redirects": [1, 3],
-        "backoff_factor": ("tuple",),
-        "retry_status_code_list": None,
-        "retry_method_list": False,
-        "respect_retry_headers": "Good question",
-        "base_url": True,
-        "verify": 30,
-        "max_reauth": "string_value",
-        "redirect_header_hook": "No hook",
-        "request_exception_hook": "No hook",
-        "response_hooks": True
-    }
+# @pytest.fixture(scope="module")
+# def bad_session_attributes():
+#     """
+#     Fixture for invalid attributes for each session parameter.
+#
+#     :return: dictionary with invalid attributes
+#     """
+#     return {
+#         "headers": ("value_one", "value_two", "value_three"),
+#         "auth_headers": 31337,
+#         "auth": {"key": "value"},
+#         "timeout": "string_value",
+#         "retries": "string_value",
+#         "max_redirects": [1, 3],
+#         "backoff_factor": ("tuple",),
+#         "retry_status_code_list": None,
+#         "retry_method_list": False,
+#         "respect_retry_headers": "Good question",
+#         "base_url": False,
+#         "verify": 30,
+#         "max_reauth": "string_value",
+#         "redirect_header_hook": "No hook",
+#         "request_exception_hook": "No hook",
+#         "response_hooks": True
+#     }
 
 
 def test_object_is_not_singleton(standard_test_class):
@@ -78,3 +80,26 @@ def test_object_with_context_manager(test_class):
         # Test the singleton has an instance defined
         if hasattr(class_instance.__class__, "_instances"):
             assert class_instance.__class__._instances != {}
+
+
+@pytest.mark.parametrize("test_class",
+                         [
+                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
+                                          marks=pytest.mark.xfail(
+                                              reason="requests_toolbelt does not validate the "
+                                                     "base_url attribute.")
+                                          ),
+                             restsession.RestSession,
+                             restsession.RestSessionSingleton
+                         ])
+def test_invalid_initialization(test_class):
+    """
+    Test that attempting to create an object with invalid attributes
+    raises an InitializationError.
+
+    :param test_class: Fixture for the class to test
+    :param bad_session_attributes: Fixture with invalid attributes
+    :return: None
+    """
+    with pytest.raises(restsession.exceptions.InitializationError):
+        invalid_object = test_class(base_url=False)
