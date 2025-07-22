@@ -283,6 +283,7 @@ def custom_auth_header():
     return CUSTOM_AUTH_HEADER
 
 
+@pytest.mark.basic_auth
 def test_basic_auth(test_class,
                     request_method,
                     generic_mock_server):
@@ -415,6 +416,8 @@ def test_basic_auth_header_removed_on_redirect(test_class,
         assert "Authorization" not in received_headers, \
             "Authorization header was returned by the second server"
 
+
+@pytest.mark.custom_auth
 @pytest.mark.parametrize("test_class",
                          [
                              pytest.param(requests_toolbelt.sessions.BaseUrlSession,
@@ -537,6 +540,7 @@ def test_basic_auth_header_not_removed_on_same_origin_redirect(test_class,
             "Expected auth value NOT preserved on same-origin redirect."
 
 
+@pytest.mark.custom_auth
 @pytest.mark.parametrize("test_class",
                          [
                              pytest.param(requests_toolbelt.sessions.BaseUrlSession,

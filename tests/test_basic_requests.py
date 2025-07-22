@@ -30,7 +30,6 @@ def request_url_path():
     return "/api/request/path"
 
 
-
 @pytest.mark.parametrize("test_class",
                          [
                              pytest.param(requests_toolbelt.sessions.BaseUrlSession,

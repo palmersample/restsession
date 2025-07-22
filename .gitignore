@@ -2,5 +2,8 @@ restsession.egg-info/
 *.pyc
 *.swp
 *.egg
+dev
 dist
 .idea
+.coverage
+

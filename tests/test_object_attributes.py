@@ -18,6 +18,32 @@ logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.attrs
 
 
+@pytest.fixture(scope="module")
+def bad_session_attributes():
+    """
+    Fixture for invalid attributes for each session parameter.
+
+    :return: dictionary with invalid attributes
+    """
+    return {
+        "headers": ("value_one", "value_two", "value_three"),
+        "auth_headers": 31337,
+        "auth": {"key": "value"},
+        "timeout": "string_value",
+        "retries": "string_value",
+        "max_redirects": [1, 3],
+        "backoff_factor": ("tuple",),
+        "retry_status_code_list": None,
+        "retry_method_list": False,
+        "respect_retry_headers": "Good question",
+        "base_url": False,
+        "verify": 30,
+        "max_reauth": "string_value",
+        "redirect_header_hook": "No hook",
+        "request_exception_hook": "No hook",
+        "response_hooks": True
+    }
+
 @pytest.mark.parametrize("test_class",
                          [
                              pytest.param(requests_toolbelt.sessions.BaseUrlSession,
