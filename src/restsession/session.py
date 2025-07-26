@@ -16,10 +16,11 @@ from requests.adapters import HTTPAdapter
 from requests import Session as RequestSession
 
 from urllib3 import disable_warnings
+from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
-from .defaults import SESSION_DEFAULTS
-from .models import SessionParamModel
-from .exceptions import (InvalidParameterError, InitializationError)
+from restsession.defaults import SESSION_DEFAULTS
+from restsession.models import SessionParamModel
+from restsession.exceptions import (InvalidParameterError, InitializationError)
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         self.reauth_count = 0
 
         # Initialize default response hooks
-        self.update_response_hooks()
+        self._update_response_hooks()
 
         default_retry_strategy = Retry(
             total=self.retries,
@@ -487,7 +488,7 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         try:
             self._session_params.tls_verify = tls_verify
             if self.verify is False:
-                disable_warnings()
+                disable_warnings(InsecureRequestWarning)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
@@ -675,28 +676,30 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
         :return: None
         """
         try:
-            # if not isinstance(hooks, list):
-            #     hooks = [hooks]
-            self._session_params.response_hooks.append(hooks)
-            self.update_response_hooks()
+            if not isinstance(hooks, list):
+                hooks = [hooks,]
+            self._update_response_hooks(hooks)
         except ValidationError as err:
             raise InvalidParameterError(err) from err
 
-    def update_response_hooks(self):
+    def _update_response_hooks(self, new_hooks=()):
         """
         Update all response hooks when changed
 
         :return: None
         """
         # First hook will always be the redirect header hook.
-        self.hooks = {"response": [self.redirect_header_hook]}
+        updated_hooks = [self.redirect_header_hook]
 
         # Append any user-defined response hooks...
-        for response_hook in self.response_hooks:
-            self.hooks["response"].append(response_hook)
+        for response_hook in new_hooks:
+            if response_hook is not any((self.redirect_header_hook, self.request_exception_hook)):
+                updated_hooks.append(response_hook)
 
         # The final hook will always be the request exception hook.
-        self.hooks["response"].append(self.request_exception_hook)
+        updated_hooks.append(self.request_exception_hook)
+        self.hooks = {"response": updated_hooks}
+        self._session_params.response_hooks = self.hooks
 
     def clear_response_hooks(self):
         """
@@ -704,5 +707,5 @@ class RestSession(ExtendedSession):  # pylint: disable=too-many-public-methods
 
         :return: None
         """
-        self._session_params.response_hooks = ()
-        self.hooks = {"response": None}
+        self._session_params.response_hooks = SESSION_DEFAULTS["response_hooks"]
+        self._update_response_hooks()

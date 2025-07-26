@@ -10,7 +10,7 @@ import requests.utils
 logger = logging.getLogger(__name__)
 
 
-pytestmark = pytest.mark.redirects
+pytestmark = [pytest.mark.requests, pytest.mark.redirects,]
 
 
 @pytest.fixture

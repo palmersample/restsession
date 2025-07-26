@@ -54,8 +54,10 @@ jobs:
       - name: Check version for RC status
         id: release-check
         run: |
-          if [[ "${{ needs.setup.outputs.project-version }}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+          if [[ "${{ needs.setup.outputs.project-version }}" =~ ^[0-9]+(\.[0-9]+)+(post[0-9]?)?$ ]]; then
             echo "pypi-release=true" >> $GITHUB_OUTPUT
+          else
+            echo "pypi-release=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Tag this commit

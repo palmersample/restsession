@@ -8,7 +8,6 @@ import socket
 from threading import Thread
 import json
 import time
-from requests_toolbelt.sessions import BaseUrlSession
 from restsession import RestSession, RestSessionSingleton
 import pytest
 
@@ -33,8 +32,7 @@ def pytest_sessionfinish(session, exitstatus):
         session.exitstatus = 0 # Any arbitrary custom status you want to return```
 
 @pytest.fixture(scope="session",
-                params=[BaseUrlSession,
-                        RestSession])
+                params=[RestSession,])
 def standard_test_class(request):
     """
     Fixture for standard classes (non-singletons)
@@ -58,9 +56,8 @@ def singleton_test_class(request):
 
 
 @pytest.fixture(scope="session",
-                params=[BaseUrlSession,
-                        RestSession,
-                        RestSessionSingleton])
+                params=[RestSession,
+                        RestSessionSingleton,])
 def test_class(request):
     """
     Fixture for all classes to test. Used for most tests where it doesn't

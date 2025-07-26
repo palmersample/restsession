@@ -5,15 +5,13 @@ Test functions for request retries
 import logging
 import time
 import pytest
-import requests_toolbelt.sessions
-import restsession.defaults
-import restsession.exceptions
 import requests.exceptions
 import requests.utils
+import restsession.exceptions  # pylint:disable=import-error
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.retries
+pytestmark = [pytest.mark.requests, pytest.mark.retries,]
 
 
 @pytest.fixture(params=[2])
@@ -61,15 +59,6 @@ def retry_invalid_status_code(request):
     yield request.param
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_successful_retry(test_class,
                           request_method,
                           request_retry_count,
@@ -100,15 +89,6 @@ def test_successful_retry(test_class,
             f"Expected a successful response code, got: {request_response.status_code}"
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_too_many_respectful_retries(test_class,
                                      request_method,
                                      request_retry_count,
@@ -133,7 +113,7 @@ def test_too_many_respectful_retries(test_class,
         class_instance.retries = request_retry_count
         class_instance.backoff_factor = 0.0
         start_time = time.time()
-        with pytest.raises(requests.exceptions.RetryError) as exc_info:  # pylint: disable=unused-variable
+        with pytest.raises(requests.exceptions.RetryError):
             class_instance.request(request_method, retry_mock_server.url)
         end_time = time.time() - start_time
 
@@ -151,15 +131,6 @@ def test_too_many_respectful_retries(test_class,
             f"Elapsed time: {end_time}"
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 @pytest.mark.disrespect
 def test_too_many_disrespectful_retries(test_class,
                                         request_method,
@@ -187,7 +158,7 @@ def test_too_many_disrespectful_retries(test_class,
         class_instance.respect_retry_headers = False
 
         start_time = time.time()
-        with pytest.raises(requests.exceptions.RetryError) as exc_info:  # pylint: disable=unused-variable
+        with pytest.raises(requests.exceptions.RetryError):
             class_instance.request(request_method, retry_mock_server.url)
 
         end_time = time.time() - start_time
@@ -207,15 +178,6 @@ def test_too_many_disrespectful_retries(test_class,
             f"Elapsed time: {end_time}"
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_retry_backoff_factor(test_class,
                               request_method,
                               request_retry_count,
@@ -247,9 +209,8 @@ def test_retry_backoff_factor(test_class,
         class_instance.backoff_factor = retry_backoff_factor
         class_instance.respect_retry_headers = False
 
-
         start_time = time.time()
-        with pytest.raises(requests.exceptions.RetryError) as exc_info:  # pylint: disable=unused-variable
+        with pytest.raises(requests.exceptions.RetryError):
             class_instance.request(request_method, retry_mock_server.url)
 
         end_time = time.time() - start_time
@@ -268,15 +229,7 @@ def test_retry_backoff_factor(test_class,
             f"Number of retries: {server_retry_count}\n" \
             f"Elapsed time: {end_time}"
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
+
 def test_retry_status_code_list(test_class,
                                 request_method,
                                 request_retry_count,
@@ -306,7 +259,7 @@ def test_retry_status_code_list(test_class,
         retry_mock_server.set_handler_response_code(response_code=retry_status_code)
 
         start_time = time.time()
-        with pytest.raises(requests.exceptions.RetryError) as exc_info:  # pylint: disable=unused-variable
+        with pytest.raises(requests.exceptions.RetryError):
             class_instance.request(request_method, retry_mock_server.url)
 
         end_time = time.time() - start_time
@@ -320,15 +273,6 @@ def test_retry_status_code_list(test_class,
         logger.info("Total time for request: %s", end_time)
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_retry_status_code_not_in_list(test_class,
                                        request_method,
                                        request_retry_count,
@@ -356,15 +300,6 @@ def test_retry_status_code_not_in_list(test_class,
             class_instance.request(request_method, retry_mock_server.url)
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_retry_method_not_in_list(test_class,
                                   request_method,
                                   request_retry_count,
