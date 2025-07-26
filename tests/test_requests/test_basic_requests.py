@@ -4,21 +4,21 @@ Test functions for request redirects
 # pylint: disable=redefined-outer-name, line-too-long
 import logging
 import re
-
+import time
 import pytest
 import requests.exceptions
 import requests.utils
-import requests_toolbelt.sessions
 
 
-import restsession.exceptions
+import restsession.exceptions  # pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 
 
-pytestmark = pytest.mark.requests
+pytestmark = [pytest.mark.requests, pytest.mark.requests,]
 
 URL_REGEX = re.compile(r"^(/\w+)(.*)$")
+
 
 @pytest.fixture
 def request_url_path():
@@ -30,17 +30,7 @@ def request_url_path():
     return "/api/request/path"
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Requests does not validate the base URL")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_invalid_base_url(test_class,
-                          request_method,
                           request_url_path):
     """
     Test that providing an invalid (non-HTTP/HTTPS) URL as the base_url raises
@@ -99,15 +89,6 @@ def test_base_url(test_class,
         assert response.ok, f"Expected a success, got {response.status_code}"
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="Exception will not be raised from BaseURLSession")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_base_url_bad_urljoin(test_class,
                               generic_mock_server,
                               request_method,
@@ -139,15 +120,6 @@ def test_base_url_bad_urljoin(test_class,
         assert response.ok, f"Expected a success, got {response.status_code}"
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                          reason="BaseUrlSession does not support always_relative_url")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_always_relative_url(test_class,
                              generic_mock_server,
                              request_method,
@@ -192,12 +164,35 @@ def test_base_url_good_urljoin(test_class,
     target_server.set_server_target_path(target_path=request_url_path)
     base_url = f"{target_server.url.rstrip('/')}{URL_REGEX.match(request_url_path).groups()[0]}/"
     target_path = URL_REGEX.match(request_url_path).groups()[1].lstrip("/")
-    with (test_class(base_url=base_url) as class_instance):
+    with test_class(base_url=base_url) as class_instance:
         response = class_instance.request(request_method, target_path)
 
         assert response.ok, \
             f"Expecting successful response, instead got '{response.status_code}'"
 
+
+def test_valid_timeout(test_class, request_method, generic_mock_server):
+    """
+    Test that setting a timeout is set and honored by the class instance
+
+    :param test_class: Fixture of the class to test
+    :param request_method: Fixture of the HTTP verb to test
+    :param generic_mock_server: Fixture for the generic mock server
+    :return: None
+    """
+    generic_mock_server.set_handler_response_delay(delay_seconds=2)
+    with test_class() as class_instance:
+        class_instance.timeout = 1.0
+        class_instance.retries = 0
+        with pytest.raises(requests.exceptions.ConnectionError):  # pylint: disable=unused-variable
+            start_time = time.time()
+            class_instance.request(request_method, generic_mock_server.url)
+
+        end_time = time.time() - start_time
+
+        logger.error("End time: %s", end_time)
+        assert round(end_time, 1) == class_instance.timeout, \
+            f"Expected end time to be near {class_instance.timeout}, got {end_time}"
 
 
 #
