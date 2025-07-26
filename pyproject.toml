@@ -80,9 +80,18 @@ markers = [
 ]
 
 
+[tool.pylint.format]
+max-line-length = 132
+
+
+[tool.flake8]
+max-line-length = 132
+exclude = [".venv", "build", "dist"]
+
+
 [tool.poetry.group.test.dependencies]
 flake8 = "^7.3.0"
+flake8-pyproject = "^1.2.3"
 pytest = "^8.4.1"
 pytest-html = "^4.1.1"
-requests-toolbelt = "^1.0.0"
 pytest-cov = "^6.2.1"
