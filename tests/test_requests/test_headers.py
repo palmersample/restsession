@@ -4,16 +4,13 @@ Test functions for request headers
 # pylint: disable=redefined-outer-name, line-too-long
 import logging
 import pytest
-import requests_toolbelt.sessions
-import restsession
-import restsession.defaults
-import restsession.exceptions
-import requests.exceptions
-import requests.utils
+import restsession  # pylint: disable=import-error
+import restsession.defaults  # pylint: disable=import-error
+import restsession.exceptions  # pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.headers
+pytestmark = [pytest.mark.requests, pytest.mark.headers,]
 
 
 @pytest.fixture
@@ -42,8 +39,7 @@ def bad_headers():
 
 
 @pytest.mark.parametrize("test_class, default_headers",
-                         [(requests_toolbelt.sessions.BaseUrlSession, requests.utils.default_headers()),
-                          (restsession.RestSession, restsession.defaults.SESSION_DEFAULTS["headers"]),
+                         [(restsession.RestSession, restsession.defaults.SESSION_DEFAULTS["headers"]),
                           (restsession.RestSessionSingleton, restsession.defaults.SESSION_DEFAULTS["headers"])])
 def test_default_headers(test_class, default_headers):
     """
@@ -53,7 +49,7 @@ def test_default_headers(test_class, default_headers):
     :param default_headers: Fixture to return the expected default headers
     :return: None
     """
-    with (test_class() as class_instance):
+    with test_class() as class_instance:
         logger.error("MRO: %s", type(class_instance).mro())
         assert class_instance.headers == default_headers, \
             f"Instance headers:\n{class_instance.headers}\nDefault headers:\n{default_headers}"
@@ -73,11 +69,6 @@ def test_good_headers(test_class, good_headers):
         assert class_instance.headers == good_headers
 
 
-@pytest.mark.parametrize("test_class",
-                         [pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                       marks=pytest.mark.xfail(reason="Requests does not validate headers")),
-                          restsession.RestSession,
-                          restsession.RestSessionSingleton])
 def test_bad_headers(test_class, bad_headers):
     """
     Test that assigning bad header(s) results in an InvalidParameterError
