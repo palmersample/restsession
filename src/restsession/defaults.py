@@ -4,7 +4,7 @@ supplied. MappingProxyType prevents mutation of the default parameters inside
 the code; use property setters to change once an instance has been created.
 """
 from types import MappingProxyType
-from .default_hooks import default_request_exception_hook
+from restsession.default_hooks import default_request_exception_hook
 
 
 # 301: Moved Permanently

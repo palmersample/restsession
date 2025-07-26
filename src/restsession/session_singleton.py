@@ -8,8 +8,8 @@ methods.
 """
 # pylint: disable=invalid-name
 import logging
-from .session import RestSession
-from .metaclass import Singleton
+from restsession.session import RestSession
+from restsession.metaclass import Singleton
 
 logger = logging.getLogger(__name__)
 

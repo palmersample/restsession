@@ -21,7 +21,7 @@ from pydantic import (BaseModel,
                       StrictBool,
                       field_validator,)
 from requests.auth import AuthBase
-from .defaults import SESSION_DEFAULTS
+from restsession.defaults import SESSION_DEFAULTS
 
 logger = logging.getLogger(__name__)
 
