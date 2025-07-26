@@ -1,6 +1,6 @@
 [project]
 name = "restsession"
-version = "1.0.0"
+version = "1.0.1rc1"
 description = "RESTful API-friendly implementation of the 'requests' library"
 authors = [
     {name = "Palmer Sample",email = "palmer@palmersample.net"}
@@ -62,6 +62,8 @@ addopts = [
     "--cov-report=term-missing",
 ]
 markers = [
+    "code: Run all code coverage tests",
+    "requests: Run all requests tests",
     "auth: Module marker - run all tests in test_auth.py",
     "requests: Module marker - run all tests in test_basic_requests.py",
     "combinations: Module marker - run all tests in test_combinations.py",
