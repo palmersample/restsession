@@ -54,30 +54,6 @@ def generic_response_hook():
     logger.debug("Generic response hook has been called!")
     return True
 
-# def test_valid_timeout(test_class, request_method, generic_mock_server):
-#     """
-#     Test that setting a timeout is set and honored by the class instance
-#
-#     :param test_class: Fixture of the class to test
-#     :param request_method: Fixture of the HTTP verb to test
-#     :param generic_mock_server: Fixture for the generic mock server
-#     :return: None
-#     """
-#     generic_mock_server.set_handler_response_delay(delay_seconds=2)
-#     with test_class() as class_instance:
-#         class_instance.timeout = 1.0
-#         class_instance.retries = 0
-#         with pytest.raises(requests.exceptions.ConnectionError) as exc_info:  # pylint: disable=unused-variable
-#             start_time = time.time()
-#             class_instance.request(request_method, generic_mock_server.url)
-#
-#         end_time = time.time() - start_time
-#
-#         logger.error("End time: %s", end_time)
-#         assert round(end_time, 1) == class_instance.timeout, \
-#             f"Expected end time to be near {class_instance.timeout}, got {end_time}"
-#
-
 
 def test_valid_timeout(test_class):
     """
