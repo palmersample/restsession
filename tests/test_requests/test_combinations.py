@@ -5,16 +5,12 @@ and redirect, various auth scenarios)
 # pylint: disable=redefined-outer-name, line-too-long
 import logging
 import pytest
-import requests_toolbelt.sessions
-import restsession
-import restsession.defaults
-import restsession.exceptions
-from .conftest import BaseHttpServer, MockServerRequestHandler
+from ..conftest import BaseHttpServer, MockServerRequestHandler
 
 
 logger = logging.getLogger(__name__)
 
-pytestmark = pytest.mark.combinations
+pytestmark = [pytest.mark.requests, pytest.mark.combinations,]
 
 
 class ComboServerRequestHandler(MockServerRequestHandler):
@@ -23,7 +19,7 @@ class ComboServerRequestHandler(MockServerRequestHandler):
 
     Define actions for basic HTTP operations here.
     """
-    # pylint: disable=invalid-name, useless-return
+    # pylint: disable=invalid-name, useless-return, too-few-public-methods
     max_retries = 0
     response_code = 429
     server_address = None
@@ -90,15 +86,6 @@ def reset_combo_mock_server():
     ComboServerRequestHandler.redirect_target = None
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                              reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_redirect_then_retry(test_class, request_method, redirect_mock_server, combo_mock_server):
     """
     Test that a successful request can be made after a redirect then forced
@@ -119,15 +106,6 @@ def test_redirect_then_retry(test_class, request_method, redirect_mock_server, c
             f"Expected a successful response, received {request_response.status_code}"
 
 
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                              reason="Requests does not perform retries without an adapter mounted.")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_retry_then_redirect(test_class, request_method, redirect_mock_server, combo_mock_server):
     """
     Test that a successful request can be made after a forced retry and redirect.
