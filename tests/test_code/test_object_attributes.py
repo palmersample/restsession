@@ -43,7 +43,7 @@ def fixture_bad_session_attributes():
         "response_hooks": True
     }
 
-# @pytest.fixture(scope="module", name="generic_response_hook")
+
 def generic_response_hook():
     """
     Fixture for a generic response hook function. Just log a generic message.
@@ -591,18 +591,13 @@ def test_good_response_hooks(test_class):
     """
     with test_class() as class_instance:
         class_instance.response_hooks = [generic_response_hook]
-        expected_result = {
-            "response": [
-                class_instance.redirect_header_hook,
-                generic_response_hook,
-                class_instance.request_exception_hook
-            ]
-        }
-        logger.debug("Response hooks: %s", class_instance.response_hooks)
+
         assert isinstance(class_instance.response_hooks["response"][0], type(class_instance.redirect_header_hook)), \
             "Redirect header hook should be the first hook."
+
         assert isinstance(class_instance.response_hooks["response"][1], type(generic_response_hook)), \
             "Custom hook should be the second hook."
+
         assert isinstance(class_instance.response_hooks["response"][2], type(class_instance.request_exception_hook)), \
             "Request exception hook should be the third hook."
 
