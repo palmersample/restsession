@@ -14,17 +14,13 @@ import pytest
 import requests
 import requests.exceptions
 import requests.utils
-import requests_toolbelt.sessions
-# import restsession
-# import restsession.defaults
-import restsession.exceptions
-from .conftest import BaseHttpServer, MockServerRequestHandler
+from ..conftest import BaseHttpServer, MockServerRequestHandler
 
 
 logger = logging.getLogger(__name__)
 
 
-pytestmark = pytest.mark.auth
+pytestmark = [pytest.mark.requests, pytest.mark.auth,]
 
 CUSTOM_AUTH_TOKEN_ONE = "super_big_token_thing"
 CUSTOM_AUTH_TOKEN_TWO = "this_is_a_second_token"
@@ -418,15 +414,6 @@ def test_basic_auth_header_removed_on_redirect(test_class,
 
 
 @pytest.mark.custom_auth
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                              reason="Requests does not have auth_headers attribute")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_custom_auth_header_removed_on_redirect(test_class,
                                                 request_method,
                                                 generic_mock_server,
@@ -541,15 +528,6 @@ def test_basic_auth_header_not_removed_on_same_origin_redirect(test_class,
 
 
 @pytest.mark.custom_auth
-@pytest.mark.parametrize("test_class",
-                         [
-                             pytest.param(requests_toolbelt.sessions.BaseUrlSession,
-                                          marks=pytest.mark.xfail(
-                                              reason="Requests does not have auth_headers attribute")
-                                          ),
-                             restsession.RestSession,
-                             restsession.RestSessionSingleton
-                         ])
 def test_custom_auth_header_not_removed_on_same_origin_redirect(test_class,
                                                                 request_method,
                                                                 redirect_mock_server,
