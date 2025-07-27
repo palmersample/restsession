@@ -4,7 +4,7 @@ supplied. MappingProxyType prevents mutation of the default parameters inside
 the code; use property setters to change once an instance has been created.
 """
 from types import MappingProxyType
-from .default_hooks import default_request_exception_hook
+from restsession.default_hooks import default_request_exception_hook
 
 
 # 301: Moved Permanently
@@ -31,19 +31,19 @@ DEFAULT_HEADERS = {
 }
 
 DEFAULT_EXCEPTION_HOOKS = default_request_exception_hook
-DEFAULT_RESPONSE_HOOKS = ()
+DEFAULT_RESPONSE_HOOKS = {"response": ()}
 
 SESSION_DEFAULTS = MappingProxyType(
     {
         "headers": DEFAULT_HEADERS,
-        "auth_headers": [],
+        "auth_headers": (),
         "auth": None,
         "timeout": 3,
         "retries": 3,
         "max_redirects": 16,
         "backoff_factor": 0.3,
-        "retry_status_code_list": list(CLIENT_ERROR_CODES + SERVER_ERROR_CODES),
-        "retry_method_list": [
+        "retry_status_code_list": tuple(CLIENT_ERROR_CODES + SERVER_ERROR_CODES),
+        "retry_method_list": (
             "HEAD",
             "GET",
             "PUT",
@@ -52,7 +52,7 @@ SESSION_DEFAULTS = MappingProxyType(
             "DELETE",
             "OPTIONS",
             "TRACE"
-        ],
+        ),
         "respect_retry_headers": True,
         "base_url": None,
         "verify": True,
