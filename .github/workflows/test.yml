@@ -76,7 +76,7 @@ jobs:
 
       - name: Install wheel from TestPyPi
         run: |
-          poetry run pip install --index-url https://test.pypi.org/simple/ --no-deps ${{ inputs.project-name }}
+          poetry run pip install --index-url https://test.pypi.org/simple/ --no-deps ${{ inputs.project-name }}==${{ inputs.project-version }}
 
       # If all tests passed and this is an existing wheel, instruct pytest to
       # not run all tests again. Useful for non-code changes (e.g. pipeline
