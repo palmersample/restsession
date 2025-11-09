@@ -89,9 +89,14 @@ max-line-length = 132
 exclude = [".venv", "build", "dist"]
 
 
+[tool.coverage.run]
+relative_files = true
+
+
 [tool.poetry.group.test.dependencies]
 flake8 = "^7.3.0"
 flake8-pyproject = "^1.2.3"
 pytest = "^8.4.1"
 pytest-html = "^4.1.1"
 pytest-cov = "^6.2.1"
+coverage = {extras = ["toml"], version = "^7.10.1"}
