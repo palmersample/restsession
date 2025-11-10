@@ -60,6 +60,6 @@ SESSION_DEFAULTS = MappingProxyType(
         "request_exception_hook": DEFAULT_EXCEPTION_HOOKS,
         "response_hooks": DEFAULT_RESPONSE_HOOKS,
         "safe_arguments": True,
-        "always_relative_url": True
+        "always_relative_url": False
     }
 )
