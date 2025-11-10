@@ -74,6 +74,10 @@ jobs:
         run: |
           python -V
 
+      - name: Sleep to ensure PyPi package availability
+        run: sleep 15s
+        shell: bash
+
       - name: Install wheel from TestPyPi
         run: |
           poetry run pip install --index-url https://test.pypi.org/simple/ --no-deps ${{ inputs.project-name }}==${{ inputs.project-version }}
