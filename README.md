@@ -84,7 +84,7 @@ All attributes are OPTIONAL. Defaults are set, but can be overridden by modifyin
 
 **base_url** (string): Any valid URL to be used as the base URL for subsequent requests. URLs specified for individual requests should be supplied relative to the base URL, when defined. *Default: None*
 
-**always_relative_url** (bool): Override the `urllib.parse.urljoin` default behavior and assume that any path is relative to the base URL, if one has been defined. This is to reduce headaches which occur from trying to figure out why a path isn't being retrieved because of a missing trailing slash / present leading slash. *Default: True* 
+**always_relative_url** (bool): Override the `urllib.parse.urljoin` default behavior and assume that any path is relative to the base URL, if one has been defined. This is to reduce headaches which occur from trying to figure out why a path isn't being retrieved because of a missing trailing slash / present leading slash. *Default: False* 
 
 **auth** (tuple | requests.auth.AuthBase): If provided as a tuple(username, password), specify Basic Authorization for the session. Alternately accepts a custom auth class of type `requests.auth.AuthBase`. *Default: None* 
 
