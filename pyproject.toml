@@ -1,6 +1,6 @@
 [project]
 name = "restsession"
-version = "1.0.1"
+version = "1.0.2"
 description = "RESTful API-friendly implementation of the 'requests' library"
 authors = [
     {name = "Palmer Sample",email = "palmer@palmersample.net"}
@@ -9,9 +9,9 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.9,<4.0"
 dependencies = [
-    "pydantic (~=2.11.7)",
-    "requests (~=2.32.0)",
-    "urllib3 (~=2.5.0)",
+    "pydantic (~=2.12.5)",
+    "requests (~=2.32.5)",
+    "urllib3 (~=2.6.0)",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
