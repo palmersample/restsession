@@ -925,4 +925,4 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<4.0"
-content-hash = "258a9e8aba3d4fd2b2a5f31097c7c81c95f69a8a25bf9b73674ba81898751c61"
+content-hash = "b2b58f5b3af35a95111fddbcf0157a5bcf18fe17972d4aaada8d911a54b5fd2a"
