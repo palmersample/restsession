@@ -1,6 +1,6 @@
 [project]
 name = "restsession"
-version = "1.0.3"
+version = "1.0.4"
 description = "RESTful API-friendly implementation of the 'requests' library"
 authors = [
     {name = "Palmer Sample",email = "palmer@palmersample.net"}
@@ -9,8 +9,8 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "pydantic (~=2.12.5)",
-    "requests (~=2.32.5)",
+    "pydantic (~=2.13.3)",
+    "requests (~=2.33.0)",
     "urllib3 (~=2.6.3)",
 ]
 classifiers = [
@@ -20,11 +20,11 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
 ]
 
@@ -95,8 +95,8 @@ relative_files = true
 
 [tool.poetry.group.test.dependencies]
 flake8 = "^7.3.0"
-flake8-pyproject = "^1.2.3"
-pytest = "^8.4.1"
-pytest-html = "^4.1.1"
-pytest-cov = "^6.2.1"
-coverage = {extras = ["toml"], version = "^7.10.1"}
+flake8-pyproject = "^1.2.4"
+pytest = "^9.0.3"
+pytest-html = "^4.2.0"
+pytest-cov = "^7.1.0"
+coverage = {extras = ["toml"], version = "^7.13.5"}
