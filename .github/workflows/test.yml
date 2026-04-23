@@ -22,13 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up python ${{ inputs.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         id: setup-python
         with:
           python-version: ${{ inputs.python-version }}
 
       - name: Pull the tests directory from the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           sparse-checkout: |
             tests
@@ -38,7 +38,7 @@ jobs:
 
       - name: Initialize Poetry cache
         id: cached-poetry
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.local
           key: poetry${{ inputs.poetry-version }}-python${{ inputs.python-version }}-v${{ inputs.project-version }}-${{ runner.os }}-test
@@ -54,14 +54,14 @@ jobs:
 
       - name: Initialize environment cache
         id: cached-poetry-dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv
           key: testing-env-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Initialize pytest cache
         id: pytest-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .pytest_cache
           key: pytest-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.project-version }}
